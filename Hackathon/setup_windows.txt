@@ -1,0 +1,48 @@
+@echo off
+echo 🚀 CrewAI SQL Analysis System Setup
+echo ==================================
+
+REM Check if Python is installed
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Python is not installed. Please install Python 3.8 or higher.
+    pause
+    exit /b 1
+)
+
+echo ✅ Python found
+
+REM Create virtual environment
+echo 📦 Creating virtual environment...
+python -m venv venv
+
+REM Activate virtual environment
+echo 🔄 Activating virtual environment...
+call venv\Scripts\activate.bat
+
+REM Install dependencies
+echo 📚 Installing dependencies...
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+REM Check if .env exists
+if not exist .env (
+    echo 📝 Creating .env file...
+    copy .env.example .env
+    echo ⚠️  Please edit .env and add your GROQ_API_KEY
+    echo    Get your free key from: https://console.groq.com/
+) else (
+    echo ✅ .env file already exists
+)
+
+echo.
+echo ✅ Setup complete!
+echo.
+echo Next steps:
+echo 1. Edit .env and add your GROQ_API_KEY
+echo 2. Run the application:
+echo    - CLI Mode: python main.py
+echo    - Web UI: uvicorn fastapi_app:app --reload
+echo.
+echo Then open http://localhost:8000 in your browser
+pause
