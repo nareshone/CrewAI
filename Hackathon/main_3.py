@@ -9,7 +9,8 @@ from enum import Enum
 import logging
 from datetime import datetime
 import pickle
-from tabulate import tabulate
+from tabulate import tabulate  # Add this for nice table display
+from tabulate import tabulate  # Add this for nice table display
 
 # Load environment variables from .env file
 try:
@@ -46,6 +47,35 @@ except ImportError:
             return data.to_string(index=showindex)
         return str(data)
 
+import os
+import sqlite3
+import pandas as pd
+import matplotlib.pyplot as plt
+import json
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
+from enum import Enum
+import logging
+from datetime import datetime
+import pickle
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Loaded environment variables from .env file")
+except ImportError:
+    print("⚠️  python-dotenv not installed. Install with: pip install python-dotenv")
+    print("📝 Or set environment variables manually")
+
+# CrewAI imports
+from crewai import Agent, Task, Crew, Process
+from crewai.tools import BaseTool
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # LLM Configuration with multiple providers
 def get_llm():
     """Get LLM instance - tries multiple providers in order of preference"""
@@ -57,7 +87,7 @@ def get_llm():
     
     # Option 1: Groq API (Fast and reliable)
     try:
-        groq_key = os.getenv("GROQ_API_KEY")
+        #groq_key = os.getenv("GROQ_API_KEY")
         if groq_key and groq_key.strip():
             from langchain_groq import ChatGroq
             llm = ChatGroq(
@@ -231,7 +261,6 @@ class ConversationMemory:
         self.conversations = {}
         self.query_history = []
         self.successful_patterns = {}
-        self.feedback_history = {}  # Track feedback patterns
         self.load_memory()
     
     def save_memory(self):
@@ -239,8 +268,7 @@ class ConversationMemory:
             memory_data = {
                 'conversations': self.conversations,
                 'query_history': self.query_history,
-                'successful_patterns': self.successful_patterns,
-                'feedback_history': self.feedback_history
+                'successful_patterns': self.successful_patterns
             }
             with open(self.memory_file, 'wb') as f:
                 pickle.dump(memory_data, f)
@@ -255,11 +283,10 @@ class ConversationMemory:
                     self.conversations = memory_data.get('conversations', {})
                     self.query_history = memory_data.get('query_history', [])
                     self.successful_patterns = memory_data.get('successful_patterns', {})
-                    self.feedback_history = memory_data.get('feedback_history', {})
         except Exception as e:
             logger.error(f"Failed to load memory: {e}")
     
-    def add_conversation(self, username: str, request: str, sql_query: str, success: bool, feedback: str = None):
+    def add_conversation(self, username: str, request: str, sql_query: str, success: bool):
         if username not in self.conversations:
             self.conversations[username] = []
         
@@ -267,8 +294,7 @@ class ConversationMemory:
             'timestamp': datetime.now().isoformat(),
             'request': request,
             'sql_query': sql_query,
-            'success': success,
-            'feedback': feedback
+            'success': success
         }
         
         self.conversations[username].append(conversation_entry)
@@ -281,33 +307,16 @@ class ConversationMemory:
                 self.successful_patterns[pattern_key] = []
             self.successful_patterns[pattern_key].append(sql_query)
         
-        # Track feedback patterns
-        if feedback:
-            self._track_feedback_pattern(request, feedback, sql_query)
-        
         self.save_memory()
-    
-    def _track_feedback_pattern(self, request: str, feedback: str, sql_query: str):
-        """Track common feedback patterns for learning"""
-        feedback_key = self._extract_pattern(feedback)
-        if feedback_key not in self.feedback_history:
-            self.feedback_history[feedback_key] = []
-        
-        self.feedback_history[feedback_key].append({
-            'original_request': request,
-            'feedback': feedback,
-            'corrected_sql': sql_query,
-            'timestamp': datetime.now().isoformat()
-        })
     
     def _extract_pattern(self, request: str) -> str:
         """Extract query pattern for learning"""
-        keywords = ['count', 'average', 'sum', 'group', 'join', 'where', 'order', 'limit', 'filter', 'top']
+        keywords = ['count', 'average', 'sum', 'group', 'join', 'where', 'order']
         found = [kw for kw in keywords if kw in request.lower()]
         return '_'.join(found) if found else 'general'
     
-    def get_context(self, username: str, request: str, feedback: str = None) -> str:
-        """Get relevant context for LLM including feedback history"""
+    def get_context(self, username: str, request: str) -> str:
+        """Get relevant context for LLM"""
         context = ""
         
         # Recent user queries
@@ -316,10 +325,7 @@ class ConversationMemory:
             if recent:
                 context += "Recent queries by this user:\n"
                 for entry in recent:
-                    context += f"Request: {entry['request']}\nSQL: {entry['sql_query']}\nSuccess: {entry['success']}\n"
-                    if entry.get('feedback'):
-                        context += f"Feedback: {entry['feedback']}\n"
-                    context += "\n"
+                    context += f"Request: {entry['request']}\nSQL: {entry['sql_query']}\nSuccess: {entry['success']}\n\n"
         
         # Similar successful patterns
         pattern = self._extract_pattern(request)
@@ -330,18 +336,6 @@ class ConversationMemory:
                 for sql in examples:
                     context += f"SQL: {sql}\n"
         
-        # Feedback patterns if this is a feedback iteration
-        if feedback:
-            feedback_pattern = self._extract_pattern(feedback)
-            if feedback_pattern in self.feedback_history:
-                recent_feedback = self.feedback_history[feedback_pattern][-2:]
-                if recent_feedback:
-                    context += "Similar feedback corrections:\n"
-                    for fb_entry in recent_feedback:
-                        context += f"Original: {fb_entry['original_request']}\n"
-                        context += f"Feedback: {fb_entry['feedback']}\n"
-                        context += f"Corrected SQL: {fb_entry['corrected_sql']}\n\n"
-        
         return context
 
 # File manager for flat files
@@ -349,7 +343,7 @@ class FileDataManager:
     def __init__(self, db_path: str = "sample.db"):
         self.data_sources = {}
         self.temp_db_path = "temp_file_data.db"
-        self.main_db_path = os.path.abspath(db_path)
+        self.main_db_path = os.path.abspath(db_path)  # Store main database path
     
     def register_file(self, name: str, file_path: str) -> bool:
         try:
@@ -395,7 +389,7 @@ class FileDataManager:
         """Get comprehensive schema information for LLM"""
         schema_info = "=== AVAILABLE DATA SOURCES ===\n\n"
         
-        # Database tables with detailed schema
+        # Database tables with detailed schema - use the correct path
         abs_db_path = self.main_db_path
         print(f"🔍 Schema check - looking for database at: {abs_db_path}")
         
@@ -433,6 +427,7 @@ class FileDataManager:
                     
                     schema_info += f"\nSAMPLE DATA:\n"
                     if sample_data:
+                        # Show column headers
                         col_names = [col[1] for col in columns]
                         schema_info += f"  Headers: {col_names}\n"
                         for i, row in enumerate(sample_data, 1):
@@ -481,32 +476,37 @@ class FileDataManager:
         print(f"📋 Final schema info length: {len(schema_info)} characters")
         return schema_info
 
-# CrewAI Tools with enhanced feedback handling
+# CrewAI Tools with proper initialization
 
 class SQLGeneratorTool(BaseTool):
     name: str = "sql_generator"
-    description: str = "Generate SQL queries using LLM with schema awareness and feedback incorporation"
+    description: str = "Generate SQL queries using LLM with schema awareness"
     
-    def _run(self, query_description: str, username: str = "admin", feedback: str = None, iteration: int = 1) -> str:
-        """Generate SQL using LLM with full context and feedback"""
+    def _run(self, query_description: str, username: str = "admin") -> str:
+        """Generate SQL using LLM with full context"""
         
+        # Access global instances (we'll set these up)
         try:
             file_manager = getattr(self, '_file_manager', None)
             memory = getattr(self, '_memory', None)
             llm = getattr(self, '_llm', None)
             
-            print(f"🔍 SQL Generator - Iteration {iteration}")
-            print(f"📝 Request: {query_description}")
-            if feedback:
-                print(f"🔄 Feedback: {feedback}")
+            print(f"🔍 SQL Generator - Starting query generation for: {query_description}")
             
             if file_manager and memory:
+                # Get real-time schema info
                 schema_info = file_manager.get_schema_info()
-                context = memory.get_context(username, query_description, feedback)
+                print(f"📊 Schema info length: {len(schema_info)} characters")
+                
+                # Show first part of schema to verify it's working
+                schema_preview = schema_info[:500] + "..." if len(schema_info) > 500 else schema_info
+                print(f"📋 Schema preview: {schema_preview}")
+                
+                context = memory.get_context(username, query_description)
                 
                 if llm:
-                    print(f"🧠 Using LLM for query generation (with {'feedback' if feedback else 'initial request'})")
-                    result = self._generate_with_llm(query_description, schema_info, context, llm, feedback, iteration)
+                    print(f"🧠 Using LLM for query generation")
+                    result = self._generate_with_llm(query_description, schema_info, context, llm)
                 else:
                     print(f"⚠️  No LLM available, using fallback")
                     result = self._generate_fallback(query_description)
@@ -522,42 +522,10 @@ class SQLGeneratorTool(BaseTool):
             logger.error(f"SQL generation error: {e}")
             return self._generate_fallback(query_description)
     
-    def _generate_with_llm(self, query_description: str, schema_info: str, context: str, 
-                          llm, feedback: str = None, iteration: int = 1) -> str:
-        """Generate SQL using LLM with feedback incorporation"""
+    def _generate_with_llm(self, query_description: str, schema_info: str, context: str, llm) -> str:
+        """Generate SQL using LLM"""
         
-        if feedback and iteration > 1:
-            # This is a feedback iteration
-            prompt = f"""You are an expert SQL developer working on iteration {iteration} of a query.
-
-{schema_info}
-
-USER CONTEXT:
-{context}
-
-ORIGINAL USER REQUEST: {query_description}
-
-CRITICAL - USER FEEDBACK ON PREVIOUS QUERY:
-The user provided this feedback: "{feedback}"
-
-Your previous query didn't meet the user's requirements. You MUST:
-1. Analyze what the user is asking for in their feedback
-2. Modify the query to address their specific concerns
-3. Incorporate their feedback while maintaining SQL best practices
-4. Generate a NEW query that addresses their feedback
-
-REQUIREMENTS:
-1. Generate ONLY the SQL query, no explanations
-2. Use EXACT table and column names from the schema
-3. Address the user's feedback specifically
-4. Use proper SQL syntax with LIMIT clauses
-5. The employees table has columns: id, name, department, salary, hire_date, manager_id, status
-6. The departments table has columns: id, name, budget, location
-
-Generate the corrected SQL query that incorporates the user feedback:"""
-        else:
-            # This is the initial query generation
-            prompt = f"""You are an expert SQL developer. Generate a precise, syntactically correct SQL query.
+        prompt = f"""You are an expert SQL developer. Generate a precise, syntactically correct SQL query.
 
 {schema_info}
 
@@ -577,6 +545,14 @@ CRITICAL REQUIREMENTS:
 8. ALWAYS use LIMIT to prevent excessive results (LIMIT 50 or less)
 9. Use proper SQL syntax with correct table and column references
 
+CORRECT EXAMPLES:
+- SELECT name, department, salary FROM employees LIMIT 20;
+- SELECT department, COUNT(*) as count FROM employees GROUP BY department;
+- SELECT AVG(salary) as avg_salary FROM employees;
+- SELECT e.name, e.salary, d.budget FROM employees e JOIN departments d ON e.department = d.name LIMIT 20;
+
+IMPORTANT: Only use the exact column names listed in the schema above. Do not assume or invent column names.
+
 Generate the SQL query now:"""
 
         try:
@@ -586,15 +562,16 @@ Generate the SQL query now:"""
             else:
                 sql_query = llm(prompt)
             
-            # Clean the response
+            # Clean the response more aggressively
             sql_query = sql_query.strip()
+            # Remove any markdown formatting
             sql_query = sql_query.replace('```sql', '').replace('```', '').strip()
-            
-            # Extract just the SQL query
+            # Remove any explanatory text before/after the query
             lines = sql_query.split('\n')
             sql_lines = []
             for line in lines:
                 line = line.strip()
+                # Look for SQL statements
                 if line and (line.upper().startswith('SELECT') or 
                            line.upper().startswith('WITH') or
                            (sql_lines and not line.endswith(';') and not line.startswith('Note:') and not line.startswith('This'))):
@@ -603,17 +580,18 @@ Generate the SQL query now:"""
                     sql_lines.append(line)
                     break
                 elif line.upper().startswith('SELECT'):
-                    sql_lines = [line]
+                    sql_lines = [line]  # Start fresh if we find a new SELECT
             
             if sql_lines:
                 sql_query = ' '.join(sql_lines)
             
+            # Final validation - ensure we have a proper SQL query
             sql_query = sql_query.strip()
             if not sql_query.upper().startswith('SELECT'):
                 logger.warning(f"Generated query doesn't start with SELECT: {sql_query}")
                 return self._generate_fallback(query_description)
             
-            logger.info(f"LLM generated SQL (iteration {iteration}): {sql_query}")
+            logger.info(f"LLM generated SQL: {sql_query}")
             return sql_query
             
         except Exception as e:
@@ -654,9 +632,11 @@ class SQLExecutorTool(BaseTool):
     def _run(self, sql_query: str, username: str = "admin", db_path: str = None) -> str:
         """Execute SQL with comprehensive validation"""
         
+        # Access role manager and database path
         role_manager = getattr(self, '_role_manager', None)
         stored_db_path = getattr(self, '_db_path', None)
         
+        # Use the stored database path if available, otherwise use parameter
         if stored_db_path:
             actual_db_path = stored_db_path
         elif db_path:
@@ -673,6 +653,8 @@ class SQLExecutorTool(BaseTool):
         # Verify database file exists
         if not os.path.exists(actual_db_path):
             print(f"❌ Database not found at: {actual_db_path}")
+            print(f"📁 Current directory: {os.getcwd()}")
+            print(f"📋 Available .db files: {[f for f in os.listdir('.') if f.endswith('.db')]}")
             return f"Database file not found: {actual_db_path}"
         
         # Basic SQL validation
@@ -687,8 +669,10 @@ class SQLExecutorTool(BaseTool):
             return "Only SELECT queries allowed"
         
         try:
+            # Execute query with absolute path
             print(f"🔍 Executing SQL on database: {actual_db_path}")
             
+            # Verify database has tables before executing
             conn = sqlite3.connect(actual_db_path)
             cursor = conn.cursor()
             
@@ -709,6 +693,7 @@ class SQLExecutorTool(BaseTool):
             
             # Create a formatted table string for display
             if len(df) > 0:
+                # Limit display to first 20 rows for readability
                 display_df = df.head(20)
                 table_str = tabulate(display_df, headers='keys', tablefmt='grid', showindex=False)
                 
@@ -903,36 +888,35 @@ class QueryValidatorTool(BaseTool):
 
 class CrewAISQLSystem:
     def __init__(self, db_path: str = "sample.db"):
-        self.db_path = os.path.abspath(db_path)
+        self.db_path = os.path.abspath(db_path)  # Use absolute path
         self.llm = get_llm()
-        self.last_execution_result = None
-        self.max_feedback_iterations = 5  # Prevent infinite loops
+        self.last_execution_result = None  # Store last execution result
         
         # Initialize components with consistent database path
         self.role_manager = RoleManager()
         self.memory = ConversationMemory()
-        self.file_manager = FileDataManager(self.db_path)
+        self.file_manager = FileDataManager(self.db_path)  # Pass database path
         
         # Setup users
         self.role_manager.add_user("admin", UserRole.ADMIN)
         self.role_manager.add_user("analyst", UserRole.ANALYST)
         self.role_manager.add_user("viewer", UserRole.VIEWER)
         
-        # Initialize tools
+        # Initialize tools without problematic constructors
         self.sql_generator = SQLGeneratorTool()
         self.sql_executor = SQLExecutorTool()
         self.chart_generator = ChartGeneratorTool()
         self.query_validator = QueryValidatorTool()
         
-        # Set attributes on tools
+        # Set attributes on tools (workaround for Pydantic field validation)
         self.sql_generator._file_manager = self.file_manager
         self.sql_generator._memory = self.memory
         self.sql_generator._llm = self.llm
         
         self.sql_executor._role_manager = self.role_manager
-        self.sql_executor._db_path = self.db_path
-        self.sql_executor._system_ref = self
-        self.sql_executor._last_execution_data = None
+        self.sql_executor._db_path = self.db_path  # Set the database path
+        self.sql_executor._system_ref = self  # Add reference to system
+        self.sql_executor._last_execution_data = None  # Initialize data storage
         
         self.query_validator._llm = self.llm
         
@@ -960,6 +944,7 @@ class CrewAISQLSystem:
                 print(f"✅ Database connection verified!")
                 print(f"📊 Found tables: {tables}")
                 
+                # Test a simple query
                 if 'employees' in tables:
                     cursor.execute("SELECT COUNT(*) FROM employees")
                     count = cursor.fetchone()[0]
@@ -980,6 +965,7 @@ class CrewAISQLSystem:
         """Repair or recreate database if needed"""
         print(f"\n🔧 Attempting to repair database...")
         
+        # Remove corrupted database
         if os.path.exists(self.db_path):
             try:
                 os.remove(self.db_path)
@@ -987,6 +973,7 @@ class CrewAISQLSystem:
             except Exception as e:
                 print(f"⚠️  Could not remove database: {e}")
         
+        # Recreate database using the same logic as CrewAIApp
         return self._create_fresh_database()
     
     def _create_fresh_database(self):
@@ -1054,17 +1041,17 @@ class CrewAISQLSystem:
             print(f"❌ Failed to create fresh database: {e}")
             return False
     
+    
     def _create_agents(self):
         """Create specialized CrewAI agents"""
         
         self.sql_architect = Agent(
             role='Senior SQL Database Architect',
-            goal='Generate perfect, schema-compliant SQL queries that precisely match user requirements using only existing database columns, and incorporate user feedback to improve queries',
+            goal='Generate perfect, schema-compliant SQL queries that precisely match user requirements using only existing database columns',
             backstory="""You are a world-class database architect with 20+ years of experience. You NEVER invent 
                         column names and ALWAYS use the exact schema provided. You understand that using wrong column 
-                        names breaks queries, so you strictly follow the actual database schema. You are excellent at 
-                        incorporating user feedback and modifying queries based on their specific requirements. You know 
-                        that our employees table has: id, name, department, salary, hire_date, manager_id, status and our 
+                        names breaks queries, so you strictly follow the actual database schema. You know that our 
+                        employees table has: id, name, department, salary, hire_date, manager_id, status and our 
                         departments table has: id, name, budget, location.""",
             tools=[self.sql_generator],
             llm=self.llm,
@@ -1117,14 +1104,13 @@ class CrewAISQLSystem:
     
     def process_request(self, user_request: str, username: str = "admin", 
                        create_chart: bool = False, chart_type: str = "bar",
-                       data_source: str = "database", feedback: str = None, 
-                       iteration: int = 1) -> Dict[str, Any]:
+                       data_source: str = "database", feedback: Optional[str] = None) -> Dict[str, Any]:
         """Process request using full CrewAI workflow with feedback support"""
         
         if not self.role_manager.check_permission(username, "read"):
             return {"error": "Permission denied"}
         
-        print(f"\n🚀 STARTING CREWAI WORKFLOW - ITERATION {iteration}")
+        print(f"\n🚀 STARTING CREWAI WORKFLOW")
         print(f"📝 Request: {user_request}")
         if feedback:
             print(f"🔄 Feedback: {feedback}")
@@ -1140,7 +1126,7 @@ class CrewAISQLSystem:
         elif data_source == "both":
             user_request = f"{user_request}\n\nNote: You can query both database tables (employees, departments) and registered file sources (products, sales)."
         
-        # Task 1: SQL Generation with Intelligence and Feedback
+        # Task 1: SQL Generation with Intelligence
         sql_task_desc = f"""
             Generate an advanced SQL query for: "{original_request}"
             
@@ -1154,20 +1140,16 @@ class CrewAISQLSystem:
             
             User context: {username}
             Data source preference: {data_source}
-            Iteration: {iteration}
             """
         
-        if feedback and iteration > 1:
+        if feedback:
             sql_task_desc += f"""
             
-            🔄 CRITICAL USER FEEDBACK - ITERATION {iteration}:
-            The user has provided specific feedback on the previous query: "{feedback}"
+            IMPORTANT USER FEEDBACK: The user has requested modifications to the previous query.
+            User's modification request: "{feedback}"
             
-            You MUST incorporate this feedback and modify the SQL query accordingly.
-            The user wants you to: {feedback}
-            
-            This is iteration {iteration} - analyze what went wrong and fix it specifically.
-            Generate a NEW query that addresses the user's feedback completely.
+            You must incorporate this feedback and adjust your SQL query accordingly.
+            The user wants you to modify the query to: {feedback}
             """
         
         if data_source == "files":
@@ -1180,15 +1162,13 @@ class CrewAISQLSystem:
         sql_task = Task(
             description=sql_task_desc,
             agent=self.sql_architect,
-            expected_output=f"A production-ready, optimized SQL query for iteration {iteration} that incorporates user feedback" if feedback else "A production-ready, optimized SQL query"
+            expected_output="A production-ready, optimized SQL query that incorporates any user feedback"
         )
         
         # Task 2: Security and Quality Validation
         validation_task = Task(
             description=f"""
             Perform comprehensive security and quality analysis of the SQL query generated for: "{user_request}"
-            
-            This is iteration {iteration}. {"The query has been modified based on user feedback." if feedback else "This is the initial query."}
             
             Validate:
             - SQL injection attack vectors and security vulnerabilities
@@ -1210,8 +1190,6 @@ class CrewAISQLSystem:
         execution_task = Task(
             description=f"""
             Execute the validated SQL query and present results for user: {username}
-            
-            This is iteration {iteration}. {"Execute the query modified based on user feedback." if feedback else "Execute the initial query."}
             
             Execution protocol:
             - Extract the corrected SQL if provided by security specialist
@@ -1239,8 +1217,6 @@ class CrewAISQLSystem:
                 description=f"""
                 Create a professional {chart_type} visualization from the query results.
                 
-                This is iteration {iteration} for visualization.
-                
                 Visualization requirements:
                 - Analyze data structure and select optimal columns for visualization
                 - Apply advanced styling and professional formatting
@@ -1263,35 +1239,59 @@ class CrewAISQLSystem:
             tasks=tasks,
             process=Process.sequential,
             verbose=True,
-            manager_llm=self.llm
+            manager_llm=self.llm  # Explicitly set the LLM for CrewAI
         )
         
         try:
-            print(f"\n🔄 EXECUTING MULTI-AGENT WORKFLOW - ITERATION {iteration}...")
+            print(f"\n🔄 EXECUTING MULTI-AGENT WORKFLOW...")
             print("Agents are collaborating to process your request...")
             
             # Execute the crew
             result = crew.kickoff()
             
-            print(f"\n✅ CREWAI WORKFLOW COMPLETED SUCCESSFULLY - ITERATION {iteration}")
+            print(f"\n✅ CREWAI WORKFLOW COMPLETED SUCCESSFULLY")
             print("="*70)
             
-            # Extract execution results
+            # Debug: Show what the crew returned
+            print(f"\n🔍 Debug - Crew Result Type: {type(result)}")
+            if len(str(result)) < 200:
+                print(f"🔍 Debug - Crew Result: {result}")
+            else:
+                print(f"🔍 Debug - Crew Result Preview: {str(result)[:200]}...")
+            
+            # Extract execution results from multiple possible locations
             execution_data = None
             
+            # First check if sql_executor has the data (instance attribute)
             if hasattr(self.sql_executor, '_last_execution_data') and self.sql_executor._last_execution_data:
                 execution_data = self.sql_executor._last_execution_data
                 print(f"📊 Retrieved execution data from sql_executor instance")
                 print(f"   - Rows: {execution_data.get('row_count', 0)}")
                 print(f"   - Columns: {execution_data.get('columns', [])}")
+            # Then check system's last execution result
             elif self.last_execution_result:
                 execution_data = self.last_execution_result
                 print(f"📊 Retrieved execution data from system")
             else:
                 print(f"⚠️  No execution data found in standard locations")
             
+            # If we still don't have execution data, try to extract from crew result
+            if not execution_data:
+                result_str = str(result)
+                if "Rows Returned:" in result_str and "QUERY RESULTS:" in result_str:
+                    print(f"📊 Query was executed but data not captured in standard way")
+                    print(f"⚠️  Results are in agent output only - export may not work")
+            
             # Store in memory for learning
-            self.memory.add_conversation(username, user_request, str(result), True, feedback)
+            self.memory.add_conversation(username, user_request, str(result), True)
+            
+            # If we have execution data, also display it immediately
+            if execution_data and 'table_display' in execution_data:
+                print(f"\n📊 CAPTURED QUERY RESULTS:")
+                print(f"SQL: {execution_data.get('sql_query', 'N/A')}")
+                print(f"Rows: {execution_data.get('row_count', 0)}")
+                if execution_data.get('row_count', 0) > 0:
+                    print(f"\n{execution_data['table_display']}")
             
             return {
                 "success": True,
@@ -1301,9 +1301,7 @@ class CrewAISQLSystem:
                 "llm_provider": type(self.llm).__name__ if self.llm else "No LLM",
                 "user": username,
                 "request": user_request,
-                "execution_data": execution_data,
-                "iteration": iteration,
-                "feedback_applied": feedback is not None
+                "execution_data": execution_data  # Include actual query results
             }
             
         except Exception as e:
@@ -1311,31 +1309,24 @@ class CrewAISQLSystem:
             logger.error(error_msg)
             
             # Store failed attempt
-            self.memory.add_conversation(username, user_request, error_msg, False, feedback)
+            self.memory.add_conversation(username, user_request, error_msg, False)
             
             return {
                 "success": False,
                 "error": error_msg,
                 "llm_available": self.llm is not None,
-                "fallback_recommended": True,
-                "iteration": iteration
+                "fallback_recommended": True
             }
     
-    def human_validation_with_feedback_loop(self, result: Dict, username: str, 
-                                          original_request: str, create_chart: bool = False, 
-                                          chart_type: str = "bar", data_source: str = "database") -> tuple:
-        """Enhanced human validation with complete feedback loop support"""
-        iteration = result.get('iteration', 1)
-        
+    def human_validation(self, result: Dict, username: str, original_request: str = None) -> tuple:
+        """Human validation with CrewAI context and query results display"""
         print(f"\n{'='*80}")
-        print(f"🤖 CREWAI MULTI-AGENT ANALYSIS RESULTS - ITERATION {iteration}")
+        print(f"🤖 CREWAI MULTI-AGENT ANALYSIS RESULTS")
         print(f"{'='*80}")
         print(f"User: {username}")
         print(f"LLM Provider: {result.get('llm_provider', 'Unknown')}")
         print(f"Agents Involved: {result.get('agents_used', 0)}")
         print(f"Workflow Status: {'✅ Completed' if result.get('success') else '❌ Failed'}")
-        if result.get('feedback_applied'):
-            print(f"🔄 Feedback Applied: Yes")
         print(f"{'='*80}")
         
         if result.get('success'):
@@ -1350,6 +1341,7 @@ class CrewAISQLSystem:
                     print(f"\n📋 DATA RESULTS:")
                     print(exec_data['table_display'])
                 elif 'data' in exec_data and exec_data['data']:
+                    # Fallback to creating table from data
                     df = pd.DataFrame(exec_data['data'])
                     display_df = df.head(20)
                     print(f"\n📋 DATA RESULTS:")
@@ -1367,152 +1359,42 @@ class CrewAISQLSystem:
         while True:
             print("\n🔍 VALIDATION OPTIONS:")
             print("1. ✅ Approve and proceed")
-            print("2. 🔄 Request modifications (provide feedback)")
+            print("2. 🔄 Request modifications")
             print("3. ❌ Reject and cancel")
             print("4. 📊 Show full agent outputs")
             print("5. 💾 Export results to Excel")
             print("6. 🔄 Re-run with different data source")
-            print("7. 🧪 Test different query approach")
             
-            choice = input("Your choice (1-7): ").strip()
+            choice = input("Your choice (1-6): ").strip()
             
             if choice == "1":
                 print("✅ Results approved!")
-                return (True, None, False)  # approved, no feedback, no retry
-            
+                return (True, None)
             elif choice == "2":
-                if iteration >= self.max_feedback_iterations:
-                    print(f"⚠️  Maximum feedback iterations ({self.max_feedback_iterations}) reached.")
-                    print("Please try a different approach or approve the current result.")
-                    continue
-                
-                print(f"\n🔄 FEEDBACK ITERATION {iteration + 1}")
-                print("Please provide specific feedback on what needs to be changed:")
-                print("Examples:")
-                print("  • 'Add ORDER BY salary DESC'")
-                print("  • 'Remove the LIMIT clause'")
-                print("  • 'Group by department instead'")
-                print("  • 'Show only Engineering department'")
-                print("  • 'Include hire_date column'")
-                
-                feedback = input("Your feedback: ").strip()
-                
-                if not feedback:
-                    print("❌ No feedback provided")
-                    continue
-                
-                print(f"📝 Feedback received: {feedback}")
-                print(f"🔄 Will regenerate query with your feedback...")
-                
-                return (False, feedback, True)  # not approved, has feedback, retry needed
-            
+                feedback = input("What modifications would you like? ")
+                print(f"📝 Feedback noted: {feedback}")
+                return (False, feedback)  # Return feedback for re-execution
             elif choice == "3":
                 print("❌ Analysis rejected")
-                return (False, None, False)  # not approved, no feedback, no retry
-            
+                return (False, None)
             elif choice == "4":
                 self._show_detailed_breakdown(result)
                 continue
-            
             elif choice == "5":
                 if result.get('execution_data'):
                     filename = input("Filename (Enter for auto-generated): ").strip()
+                    # Store execution data for export
                     self.last_execution_result = result['execution_data']
                     export_result = self.export_results(None, filename if filename else None)
                     print(f"✅ {export_result}")
                 else:
                     print("❌ No data available to export")
                 continue
-            
             elif choice == "6":
                 print("🔄 Please run a new query with different data source selection")
-                return (False, "change_source", False)
-            
-            elif choice == "7":
-                print("\n🧪 SUGGEST A DIFFERENT APPROACH:")
-                new_approach = input("Describe how you'd like the query modified: ").strip()
-                if new_approach:
-                    return (False, f"Try a different approach: {new_approach}", True)
-                else:
-                    continue
-            
+                return (False, "change_source")
             else:
-                print("❌ Invalid choice. Please select 1-7.")
-    
-    def process_request_with_feedback_loop(self, user_request: str, username: str = "admin",
-                                         create_chart: bool = False, chart_type: str = "bar",
-                                         data_source: str = "database") -> Dict[str, Any]:
-        """Process request with complete feedback loop support"""
-        
-        iteration = 1
-        current_feedback = None
-        
-        while iteration <= self.max_feedback_iterations:
-            print(f"\n{'🔄' if iteration > 1 else '🚀'} PROCESSING REQUEST - ITERATION {iteration}")
-            
-            # Process the request
-            result = self.process_request(
-                user_request=user_request,
-                username=username,
-                create_chart=create_chart,
-                chart_type=chart_type,
-                data_source=data_source,
-                feedback=current_feedback,
-                iteration=iteration
-            )
-            
-            if not result.get('success'):
-                print(f"❌ Workflow failed on iteration {iteration}")
-                return result
-            
-            # Human validation with feedback
-            approved, feedback, retry = self.human_validation_with_feedback_loop(
-                result, username, user_request, create_chart, chart_type, data_source
-            )
-            
-            if approved:
-                print(f"✅ Request completed successfully after {iteration} iteration(s)")
-                return {
-                    **result,
-                    "final_iteration": iteration,
-                    "total_iterations": iteration,
-                    "user_approved": True
-                }
-            
-            if not retry:
-                print(f"❌ Request cancelled by user after {iteration} iteration(s)")
-                return {
-                    **result,
-                    "final_iteration": iteration,
-                    "total_iterations": iteration,
-                    "user_approved": False,
-                    "cancelled": True
-                }
-            
-            if feedback == "change_source":
-                print("🔄 Data source change requested - please restart with different options")
-                return {
-                    **result,
-                    "final_iteration": iteration,
-                    "total_iterations": iteration,
-                    "data_source_change_requested": True
-                }
-            
-            # Prepare for next iteration
-            current_feedback = feedback
-            iteration += 1
-            
-            print(f"\n🔄 PREPARING ITERATION {iteration}")
-            print(f"📝 Applying feedback: {current_feedback}")
-        
-        # Max iterations reached
-        print(f"⚠️  Maximum iterations ({self.max_feedback_iterations}) reached")
-        return {
-            **result,
-            "final_iteration": iteration - 1,
-            "total_iterations": iteration - 1,
-            "max_iterations_reached": True
-        }
+                print("❌ Invalid choice. Please select 1-6.")
     
     def _show_detailed_breakdown(self, result: Dict):
         """Show detailed analysis breakdown"""
@@ -1523,8 +1405,6 @@ class CrewAISQLSystem:
         print(f"Workflow Completed: {result.get('workflow_completed', False)}")
         print(f"LLM Provider: {result.get('llm_provider', 'No LLM')}")
         print(f"Agents Used: {result.get('agents_used', 0)}")
-        print(f"Iteration: {result.get('iteration', 1)}")
-        print(f"Feedback Applied: {result.get('feedback_applied', False)}")
         
         if result.get('crew_result'):
             print(f"\nFull Result:")
@@ -1551,8 +1431,7 @@ class CrewAISQLSystem:
             'successful_queries': sum(1 for q in self.memory.query_history if q['success']),
             'llm_available': self.llm is not None,
             'llm_provider': type(self.llm).__name__ if self.llm else "None",
-            'registered_files': len(self.file_manager.data_sources),
-            'feedback_sessions': len([q for q in self.memory.query_history if q.get('feedback')])
+            'registered_files': len(self.file_manager.data_sources)
         }
         
         if username and username in self.memory.conversations:
@@ -1560,8 +1439,7 @@ class CrewAISQLSystem:
             stats['user_stats'] = {
                 'total': len(user_queries),
                 'successful': sum(1 for q in user_queries if q['success']),
-                'success_rate': f"{(sum(1 for q in user_queries if q['success']) / len(user_queries) * 100):.1f}%" if user_queries else "0%",
-                'feedback_given': len([q for q in user_queries if q.get('feedback')])
+                'success_rate': f"{(sum(1 for q in user_queries if q['success']) / len(user_queries) * 100):.1f}%" if user_queries else "0%"
             }
         
         return stats
@@ -1572,13 +1450,6 @@ class CrewAISQLSystem:
             filename = f"crewai_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         
         try:
-            # Use last execution result if no data provided
-            if not data and self.last_execution_result and 'data' in self.last_execution_result:
-                data = self.last_execution_result['data']
-            
-            if not data:
-                return "No data available to export"
-            
             with pd.ExcelWriter(filename, engine='openpyxl') as writer:
                 # Main data
                 df = pd.DataFrame(data)
@@ -1586,15 +1457,11 @@ class CrewAISQLSystem:
                 
                 # Metadata
                 metadata = {
-                    'Generated By': ['CrewAI SQL Analysis System with Feedback Loop'],
+                    'Generated By': ['CrewAI SQL Analysis System'],
                     'Timestamp': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
                     'Records': [len(data)],
                     'LLM Provider': [type(self.llm).__name__ if self.llm else "No LLM"]
                 }
-                
-                if self.last_execution_result:
-                    metadata['SQL Query'] = [self.last_execution_result.get('sql_query', 'N/A')]
-                
                 pd.DataFrame(metadata).to_excel(writer, sheet_name='Metadata', index=False)
             
             return f"Results exported to: {filename}"
@@ -1640,11 +1507,43 @@ class CrewAISQLSystem:
         except Exception as e:
             print(f"❌ Direct query failed: {e}")
             return {"success": False, "error": str(e)}
-
-# Application Interface with Enhanced Feedback Support
+        """Export query results to Excel"""
+        if not filename:
+            filename = f"crewai_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        try:
+            # Use last execution result if no data provided
+            if not data and self.last_execution_result and 'data' in self.last_execution_result:
+                data = self.last_execution_result['data']
+            
+            if not data:
+                return "No data available to export"
+            
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                # Main data
+                df = pd.DataFrame(data)
+                df.to_excel(writer, sheet_name='Query Results', index=False)
+                
+                # Metadata
+                metadata = {
+                    'Generated By': ['CrewAI SQL Analysis System'],
+                    'Timestamp': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+                    'Records': [len(data)],
+                    'LLM Provider': [type(self.llm).__name__ if self.llm else "No LLM"]
+                }
+                
+                if self.last_execution_result:
+                    metadata['SQL Query'] = [self.last_execution_result.get('sql_query', 'N/A')]
+                
+                pd.DataFrame(metadata).to_excel(writer, sheet_name='Metadata', index=False)
+            
+            return f"Results exported to: {filename}"
+        except Exception as e:
+            return f"Export failed: {str(e)}"
+# Application Interface
 class CrewAIApp:
     def __init__(self):
-        print("🏗️  Initializing CrewAI Application with Feedback Loop Support...")
+        print("🏗️  Initializing CrewAI Application...")
         
         # Create sample data FIRST, before initializing the system
         self._create_sample_data()
@@ -1667,9 +1566,11 @@ class CrewAIApp:
         """Create sample database and files"""
         print("📊 Creating sample database and files...")
         
+        # Use absolute path for consistency
         db_path = os.path.abspath("sample.db")
         print(f"📂 Database will be created at: {db_path}")
         
+        # Remove existing database to recreate with proper schema
         if os.path.exists(db_path):
             try:
                 os.remove(db_path)
@@ -1677,11 +1578,13 @@ class CrewAIApp:
             except Exception as e:
                 print(f"⚠️  Could not remove existing database: {e}")
         
+        # Create fresh database
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             
             print("🏗️  Creating employees table...")
+            # Create employees table with clear column names
             cursor.execute("""
                 CREATE TABLE employees (
                     id INTEGER PRIMARY KEY,
@@ -1695,6 +1598,7 @@ class CrewAIApp:
             """)
             
             print("🏗️  Creating departments table...")
+            # Create departments table
             cursor.execute("""
                 CREATE TABLE departments (
                     id INTEGER PRIMARY KEY,
@@ -1705,6 +1609,7 @@ class CrewAIApp:
             """)
             
             print("📝 Inserting sample data...")
+            # Insert sample employees data
             employees = [
                 (1, "John Doe", "Engineering", 75000, "2022-01-15", None, "active"),
                 (2, "Jane Smith", "Marketing", 65000, "2021-03-20", None, "active"),
@@ -1718,6 +1623,7 @@ class CrewAIApp:
                 (10, "Helen Davis", "Marketing", 62000, "2022-09-01", 2, "active")
             ]
             
+            # Insert sample departments data
             departments = [
                 (1, "Engineering", 500000, "Building A"),
                 (2, "Marketing", 300000, "Building B"),
@@ -1730,6 +1636,7 @@ class CrewAIApp:
             
             conn.commit()
             
+            # Verify data was inserted
             cursor.execute("SELECT COUNT(*) FROM employees")
             emp_count = cursor.fetchone()[0]
             cursor.execute("SELECT COUNT(*) FROM departments")
@@ -1739,6 +1646,7 @@ class CrewAIApp:
             print(f"   📊 {emp_count} employees inserted")
             print(f"   🏢 {dept_count} departments inserted")
             
+            # Show schema for verification
             print(f"\n📋 Database Schema:")
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = cursor.fetchall()
@@ -1750,6 +1658,7 @@ class CrewAIApp:
             
             conn.close()
             
+            # Test database accessibility
             print(f"\n🔍 Testing database access...")
             test_conn = sqlite3.connect(db_path)
             test_cursor = test_conn.cursor()
@@ -1769,6 +1678,7 @@ class CrewAIApp:
         print("\n📁 Creating sample files...")
         
         try:
+            # Create products CSV
             products_file = 'sample_products.csv'
             if not os.path.exists(products_file):
                 products = {
@@ -1782,6 +1692,7 @@ class CrewAIApp:
                 pd.DataFrame(products).to_csv(products_file, index=False)
                 print(f"✅ Created {products_file}")
             
+            # Create sales Excel file
             sales_file = 'sample_sales.xlsx'
             if not os.path.exists(sales_file):
                 sales = {
@@ -1813,6 +1724,7 @@ class CrewAIApp:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             
+            # Check tables exist
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = [row[0] for row in cursor.fetchall()]
             print(f"📊 Tables found: {tables}")
@@ -1822,6 +1734,7 @@ class CrewAIApp:
                 emp_count = cursor.fetchone()[0]
                 print(f"👥 Employees: {emp_count} records")
                 
+                # Show sample data
                 cursor.execute("SELECT * FROM employees LIMIT 3")
                 sample_employees = cursor.fetchall()
                 print(f"📋 Sample employees: {sample_employees}")
@@ -1831,6 +1744,7 @@ class CrewAIApp:
                 dept_count = cursor.fetchone()[0]
                 print(f"🏢 Departments: {dept_count} records")
                 
+                # Show sample data
                 cursor.execute("SELECT * FROM departments LIMIT 3")
                 sample_depts = cursor.fetchall()
                 print(f"📋 Sample departments: {sample_depts}")
@@ -1863,7 +1777,6 @@ class CrewAIApp:
                 print("   export ANTHROPIC_API_KEY='your_claude_key'")
             else:
                 print("🤖 CrewAI agents will use LLM for intelligent analysis")
-                print("🔄 Human-in-the-loop feedback system enabled")
         else:
             print("❌ No LLM configured")
             print("📝 To enable full AI features, set one of these:")
@@ -1876,8 +1789,9 @@ class CrewAIApp:
         print(f"{'='*60}")
     
     def run_interactive(self):
-        """Run interactive CrewAI session with feedback loop"""
+        """Run interactive CrewAI session"""
         
+        # First verify database was created properly
         if not self.verify_database():
             print("⚠️  Database verification failed. Attempting to recreate...")
             self._create_sample_data()
@@ -1885,15 +1799,14 @@ class CrewAIApp:
                 print("❌ Could not create database. Some features may not work.")
         
         print(f"\n{'='*70}")
-        print("🚀 CREWAI SQL ANALYSIS SYSTEM WITH FEEDBACK LOOP")
+        print("🚀 CREWAI SQL ANALYSIS SYSTEM")
         print(f"{'='*70}")
-        print("🤖 Enhanced Multi-Agent AI System Features:")
+        print("🤖 Multi-Agent AI System Features:")
         print("✅ Natural language to SQL with LLM intelligence")
         print("✅ Multi-agent collaboration (Architect + Security + Analyst + Viz)")
         print("✅ Advanced security validation and query optimization")
         print("✅ Professional data visualization")
-        print("✅ 🔄 HUMAN-IN-THE-LOOP FEEDBACK SYSTEM")
-        print("✅ Learning memory system with feedback tracking")
+        print("✅ Learning memory system")
         print("✅ Role-based access control")
         print("✅ File data source integration")
         print(f"{'='*70}")
@@ -1920,16 +1833,15 @@ class CrewAIApp:
         print(f"🧠 LLM Provider: {stats['llm_provider']}")
         print(f"📈 Total Queries: {stats['total_queries']}")
         print(f"✅ Success Rate: {stats['successful_queries']}/{stats['total_queries']}")
-        print(f"🔄 Feedback Sessions: {stats['feedback_sessions']}")
         print(f"📁 Data Sources: {stats['registered_files']} files + database tables")
         
         if 'user_stats' in stats:
-            print(f"👤 Your Stats: {stats['user_stats']['success_rate']} success rate, {stats['user_stats']['feedback_given']} feedback sessions")
+            print(f"👤 Your Stats: {stats['user_stats']['success_rate']} success rate")
         
-        # Main interaction loop with feedback
+        # Main interaction loop
         while True:
             print(f"\n{'='*70}")
-            print("💬 What would you like to analyze? (🔄 Feedback loop enabled)")
+            print("💬 What would you like to analyze?")
             print("🎯 EXAMPLE QUERIES:")
             print("   • 'Show me all employees with their departments'")
             print("   • 'What is the average salary by department?'")
@@ -1937,14 +1849,13 @@ class CrewAIApp:
             print("   • 'Show top 5 highest paid employees'")
             print("   • 'Which department has the highest budget?'")
             print("   • 'Show products by category with total stock'")
-            print("💡 The system will ask for feedback if the results don't match your needs!")
             print("💡 Type 'help' for more examples, 'verify' to check database, or 'quit' to exit")
             print(f"{'='*70}")
             
             request = input("🔍 Your analysis request: ").strip()
             
             if request.lower() == 'quit':
-                print("👋 Thank you for using CrewAI SQL Analysis System with Feedback Loop!")
+                print("👋 Thank you for using CrewAI SQL Analysis System!")
                 break
             elif request.lower() == 'help':
                 self._show_help()
@@ -1959,12 +1870,9 @@ class CrewAIApp:
             if not request:
                 continue
             
-            # Configuration options
+            # Visualization options
             create_chart = False
             chart_type = "bar"
-            data_source = "database"
-            
-            # Visualization options
             if self.system.role_manager.check_permission(username, "read"):
                 viz_choice = input("📊 Create visualization? (y/n): ").strip().lower()
                 if viz_choice == 'y':
@@ -1972,69 +1880,41 @@ class CrewAIApp:
                     print("Chart types: bar, pie")
                     chart_type = input("Chart type (bar/pie): ").strip() or "bar"
             
-            # Data source options
-            print("\n💾 Data source options:")
-            print("1. Database tables (employees, departments)")
-            print("2. File sources (products, sales)")
-            print("3. Both")
+            # Process with CrewAI
+            print(f"\n🚀 Initiating CrewAI multi-agent analysis...")
+            result = self.system.process_request(request, username, create_chart, chart_type)
             
-            source_choice = input("Choose data source (1-3): ").strip()
-            if source_choice == "2":
-                data_source = "files"
-            elif source_choice == "3":
-                data_source = "both"
-            else:
-                data_source = "database"
-            
-            # Process with CrewAI and feedback loop
-            print(f"\n🚀 Initiating CrewAI multi-agent analysis with feedback loop...")
-            print(f"🔄 The system will iterate until you're satisfied with the results!")
-            
-            result = self.system.process_request_with_feedback_loop(
-                user_request=request,
-                username=username,
-                create_chart=create_chart,
-                chart_type=chart_type,
-                data_source=data_source
-            )
-            
-            # Final result handling
-            if result.get('user_approved'):
-                iterations = result.get('total_iterations', 1)
-                print(f"\n✅ Analysis completed successfully after {iterations} iteration(s)!")
-                
-                # Export option
-                export = input("\n💾 Export final results to Excel? (y/n): ").strip().lower()
-                if export == 'y':
-                    filename = input("Filename (Enter for auto-generated): ").strip()
-                    export_result = self.system.export_results(
-                        None,  # Use last execution result
-                        filename if filename else None
-                    )
-                    print(f"📊 {export_result}")
-            
-            elif result.get('cancelled'):
-                print("❌ Analysis cancelled by user")
-            
-            elif result.get('max_iterations_reached'):
-                print(f"⚠️  Maximum iterations reached. Results from last attempt are available.")
-                
-            elif result.get('data_source_change_requested'):
-                print("🔄 Please restart with different data source options")
-                
+            # Human validation
+            if result.get('success'):
+                approved = self.system.human_validation(result, username)
+                if approved:
+                    print(f"\n✅ Analysis completed successfully!")
+                    
+                    # Export option
+                    export = input("\n💾 Export results to Excel? (y/n): ").strip().lower()
+                    if export == 'y':
+                        filename = input("Filename (Enter for auto-generated): ").strip()
+                        export_result = self.system.export_results(
+                            [{"message": "CrewAI analysis completed", "status": "success"}],
+                            filename if filename else None
+                        )
+                        print(f"📊 {export_result}")
+                else:
+                    print("❌ Analysis rejected by user")
             else:
                 print(f"❌ CrewAI workflow failed: {result.get('error', 'Unknown error')}")
                 if result.get('fallback_recommended'):
                     print("💡 Consider checking your LLM configuration or API keys")
                 
+                # Offer to verify database
                 verify_choice = input("🔍 Verify database integrity? (y/n): ").strip().lower()
                 if verify_choice == 'y':
                     self.verify_database()
     
     def _show_help(self):
-        """Show comprehensive help with feedback system information"""
+        """Show comprehensive help"""
         print(f"\n{'='*70}")
-        print("📚 CREWAI SQL ANALYSIS HELP WITH FEEDBACK LOOP")
+        print("📚 CREWAI SQL ANALYSIS HELP")
         print(f"{'='*70}")
         print("\n🎯 QUERY EXAMPLES BY CATEGORY:")
         print("\n📊 Basic Analytics:")
@@ -2057,51 +1937,30 @@ class CrewAIApp:
         print("   • 'Employee salary compared to department average'")
         print("   • 'Products with low stock levels'")
         
-        print("\n🔄 FEEDBACK SYSTEM EXAMPLES:")
-        print("If the initial query doesn't meet your needs, you can provide feedback like:")
-        print("   • 'Add ORDER BY salary DESC'")
-        print("   • 'Remove the LIMIT clause'")
-        print("   • 'Group by department instead'")
-        print("   • 'Show only Engineering department'")
-        print("   • 'Include hire_date column'")
-        print("   • 'Change this to a pie chart'")
-        print("   • 'Show percentages instead of counts'")
-        
         print("\n⚙️ SYSTEM COMMANDS:")
         print("   • 'stats' - Show detailed system statistics")
         print("   • 'help' - Show this help")
-        print("   • 'verify' - Verify database connection")
         print("   • 'quit' - Exit system")
         
-        print(f"\n🤖 CREWAI AGENTS WITH FEEDBACK:")
-        print("   🏗️  SQL Architect - Generates optimal queries, incorporates feedback")
+        print(f"\n🤖 CREWAI AGENTS:")
+        print("   🏗️  SQL Architect - Generates optimal queries")
         print("   🛡️  Security Specialist - Validates query safety")
         print("   📊 Data Analyst - Executes and analyzes results")
         print("   🎨 Visualization Expert - Creates professional charts")
-        
-        print(f"\n🔄 FEEDBACK LOOP PROCESS:")
-        print("   1. 🤖 AI generates initial query")
-        print("   2. 👀 You review results")
-        print("   3. 💬 Provide specific feedback (if needed)")
-        print("   4. 🔄 AI modifies query based on feedback")
-        print("   5. 🔁 Repeat until satisfied")
-        print("   6. ✅ Approve final results")
-        
         print(f"{'='*70}")
     
     def _show_detailed_stats(self, username: str):
-        """Show comprehensive system statistics including feedback metrics"""
+        """Show comprehensive system statistics"""
         stats = self.system.get_stats(username)
         
         print(f"\n{'='*70}")
-        print("📊 DETAILED SYSTEM STATISTICS WITH FEEDBACK METRICS")
+        print("📊 DETAILED SYSTEM STATISTICS")
         print(f"{'='*70}")
         print(f"🧠 LLM Provider: {stats['llm_provider']}")
         print(f"🤖 LLM Available: {'✅ Yes' if stats['llm_available'] else '❌ No'}")
         print(f"📈 Total Queries: {stats['total_queries']}")
         print(f"✅ Successful: {stats['successful_queries']}")
         print(f"❌ Failed: {stats['total_queries'] - stats['successful_queries']}")
-        print(f"🔄 Feedback Sessions: {stats['feedback_sessions']}")
         print(f"📁 Registered Files: {stats['registered_files']}")
         
         if 'user_stats' in stats:
@@ -2110,126 +1969,71 @@ class CrewAIApp:
             print(f"   Total Queries: {user_stats['total']}")
             print(f"   Successful: {user_stats['successful']}")
             print(f"   Success Rate: {user_stats['success_rate']}")
-            print(f"   Feedback Given: {user_stats['feedback_given']}")
         
-        # Show recent query patterns with feedback
+        # Show recent query patterns
         if username in self.system.memory.conversations:
             recent = self.system.memory.conversations[username][-5:]
             print(f"\n📝 RECENT QUERY HISTORY:")
             for i, query in enumerate(recent, 1):
                 status = "✅" if query['success'] else "❌"
-                feedback_indicator = "🔄" if query.get('feedback') else ""
-                print(f"   {i}. {status}{feedback_indicator} {query['request'][:50]}...")
-                if query.get('feedback'):
-                    print(f"      💬 Feedback: {query['feedback'][:40]}...")
-        
-        # Show feedback patterns learned by the system
-        if hasattr(self.system.memory, 'feedback_history') and self.system.memory.feedback_history:
-            print(f"\n🧠 LEARNED FEEDBACK PATTERNS:")
-            for pattern, entries in list(self.system.memory.feedback_history.items())[:3]:
-                print(f"   Pattern '{pattern}': {len(entries)} examples")
+                print(f"   {i}. {status} {query['request'][:50]}...")
         
         print(f"{'='*70}")
 
 def main():
-    """Main application entry point with enhanced feedback system"""
-    print("🚀 Initializing CrewAI SQL Analysis System with Human-in-the-Loop Feedback...")
+    """Main application entry point"""
+    print("🚀 Initializing CrewAI SQL Analysis System...")
     
     try:
         app = CrewAIApp()
         
         print("\n🎯 Choose mode:")
-        print("1. 💬 Interactive Session with Feedback Loop (Recommended)")
+        print("1. 💬 Interactive Session (Full CrewAI Experience)")
         print("2. 🔧 API Demo (Programmatic Usage)")
         print("3. 📊 Quick Test (Single Query)")
-        print("4. 🔄 Feedback Loop Demo (Show feedback capabilities)")
-        print("5. 🔧 Setup Guide (Configure LLM)")
+        print("4. 🔧 Setup Guide (Configure LLM)")
         
-        choice = input("Your choice (1-5): ").strip()
+        choice = input("Your choice (1-4): ").strip()
         
         if choice == "1":
             app.run_interactive()
-            
         elif choice == "2":
-            print("\n🔧 API DEMO - CrewAI Workflow with Feedback:")
-            result = app.system.process_request_with_feedback_loop(
-                user_request="Show me average salary by department with employee counts",
+            print("\n🔧 API DEMO - CrewAI Workflow:")
+            result = app.system.process_request(
+                "Show me average salary by department with employee counts",
                 username="admin",
                 create_chart=True,
                 chart_type="bar"
             )
             print(f"📊 API Result: {result}")
-            
         elif choice == "3":
             print("\n📊 QUICK TEST:")
             result = app.system.process_request("Count all employees", "admin")
             if result.get('success'):
                 print("✅ CrewAI system working correctly!")
-                
-                # Quick feedback test
-                print("\n🔄 Testing feedback mechanism...")
-                feedback_result = app.system.process_request(
-                    "Count all employees", 
-                    "admin", 
-                    feedback="Add department breakdown", 
-                    iteration=2
-                )
-                if feedback_result.get('success'):
-                    print("✅ Feedback system working correctly!")
-                else:
-                    print(f"⚠️  Feedback test failed: {feedback_result.get('error')}")
             else:
                 print(f"❌ Test failed: {result.get('error')}")
-                
         elif choice == "4":
-            print("\n🔄 FEEDBACK LOOP DEMO:")
-            print("This demo shows how the system handles user feedback...")
-            
-            # Demo the feedback loop with a simple example
-            print("\n1️⃣  Initial Request: 'Show all employees'")
-            result1 = app.system.process_request("Show all employees", "admin")
-            
-            if result1.get('success'):
-                print("✅ Initial query successful")
-                
-                print("\n2️⃣  Simulated User Feedback: 'Only show Engineering department'")
-                result2 = app.system.process_request(
-                    "Show all employees", 
-                    "admin", 
-                    feedback="Only show Engineering department",
-                    iteration=2
-                )
-                
-                if result2.get('success'):
-                    print("✅ Feedback incorporated successfully!")
-                    print("🎯 Demo completed - feedback loop is working!")
-                else:
-                    print(f"❌ Feedback demo failed: {result2.get('error')}")
-            else:
-                print(f"❌ Initial demo failed: {result1.get('error')}")
-                
-        elif choice == "5":
             show_setup_guide()
-            
         else:
-            print("Invalid choice. Starting interactive mode with feedback loop...")
+            print("Invalid choice. Starting interactive mode...")
             app.run_interactive()
     
     except Exception as e:
         logger.error(f"Application error: {e}")
         print(f"❌ Application error: {e}")
-        print("💡 Try option 5 for setup guidance")
+        print("💡 Try option 4 for setup guidance")
         import traceback
         traceback.print_exc()
 
 def show_setup_guide():
-    """Show detailed setup guide with feedback system information"""
+    """Show detailed setup guide"""
     print(f"\n{'='*70}")
-    print("🔧 CREWAI SQL SYSTEM SETUP GUIDE WITH FEEDBACK LOOP")
+    print("🔧 CREWAI SQL SYSTEM SETUP GUIDE")
     print(f"{'='*70}")
     
     print("\n📋 STEP 1: Install Dependencies")
-    print("pip install crewai pandas matplotlib openpyxl tabulate python-dotenv")
+    print("pip install crewai pandas matplotlib openpyxl")
     
     print("\n🧠 STEP 2: Choose an LLM Provider (pick one):")
     print("\n   🚀 OPTION A: Groq (Recommended - Fast & Free)")
@@ -2258,26 +2062,11 @@ def show_setup_guide():
     print("\n⚡ STEP 3: Test the System")
     print("python your_script.py")
     
-    print("\n🔄 STEP 4: Understanding the Feedback Loop")
-    print("- The system will generate an initial SQL query")
-    print("- You can provide feedback if results don't match expectations")
-    print("- The AI will modify the query based on your feedback")
-    print("- This continues until you approve the results")
-    print("- Maximum 5 iterations to prevent infinite loops")
-    
     print("\n💡 TROUBLESHOOTING:")
-    print("- System works without LLM but with limited feedback capabilities")
+    print("- System works without LLM but with limited features")
     print("- Mock LLM is used as fallback when no provider available")
     print("- Check your API key environment variables")
     print("- Ensure internet connection for cloud providers")
-    print("- Feedback system requires LLM for intelligent query modification")
-    
-    print("\n🎯 FEEDBACK BEST PRACTICES:")
-    print("- Be specific: 'Add ORDER BY salary DESC' vs 'sort by salary'")
-    print("- Mention columns: 'Include hire_date column'")
-    print("- Specify filters: 'Only Engineering department'")
-    print("- Request formatting: 'Show as percentages'")
-    print("- Ask for limits: 'Show top 10 only'")
     
     print(f"{'='*70}")
 
