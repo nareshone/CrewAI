@@ -1,0 +1,30 @@
+# Core packages
+pandas
+matplotlib
+tabulate
+python-dotenv
+openpyxl
+#sqlite3  # Note: sqlite3 is part of Python standard library, included for completeness
+
+# Logging and typing are built-in, no need to list them
+
+# LangChain and LLM integrations
+langchain
+langchain-core
+langchain-community
+langchain-openai
+langchain-groq
+langchain-anthropic
+
+# LLM dependencies (used indirectly via langchain)
+openai
+anthropic
+groq
+requests  # Used for checking Ollama server
+
+# CrewAI framework
+crewai
+streamlit
+
+# Visualization backend (matplotlib uses this implicitly, but you can pin it)
+pillow

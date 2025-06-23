@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrewAI SQL Assistant - Professional Chat Interface</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 0;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+            border-right: 1px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .config-section {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .config-section h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected { background: #28a745; }
+        .status-processing { background: #ffc107; }
+        .status-error { background: #dc3545; }
+
+        .upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        /* Main Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .chat-header h2 {
+            font-size: 1.1rem;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .chat-controls {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-info {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .message.user .message-info {
+            justify-content: flex-end;
+        }
+
+        .sql-display {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .sql-display::before {
+            content: 'SQL';
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 0.7rem;
+            color: #a0aec0;
+            font-weight: bold;
+        }
+
+        .data-table {
+            max-height: 300px;
+            overflow: auto;
+            margin: 10px 0;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .chart-display {
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .chart-display img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: flex-end;
+        }
+
+        .feedback-input {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .feedback-input textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            resize: vertical;
+            min-height: 60px;
+            font-size: 0.8rem;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            max-width: fit-content;
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            background: #6c757d;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+
+        /* Chat Input */
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .input-group textarea {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            resize: none;
+            min-height: 20px;
+            max-height: 120px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .input-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 0.8rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #667eea;
+        }
+
+        /* Error and Success Messages */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 0.85rem;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background: #cce5ff;
+            border: 1px solid #80bdff;
+            color: #004085;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+                order: 2;
+            }
+            
+            .chat-area {
+                order: 1;
+                height: 60vh;
+            }
+            
+            .message-bubble {
+                max-width: 85%;
+            }
+        }
+
+        /* Loading States */
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Statistics Cards */
+        .stats-card {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border: 1px solid #e9ecef;
+        }
+
+        .stats-card h4 {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .stats-card .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        /* Export Button */
+        .export-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .export-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-brain"></i> CrewAI Assistant</h1>
+                <p>Professional SQL Analysis</p>
+            </div>
+
+            <!-- System Configuration -->
+            <div class="config-section">
+                <h3><i class="fas fa-cog"></i> System Configuration</h3>
+                
+                <div class="form-group">
+                    <label for="llmProvider">AI Model Provider</label>
+                    <select id="llmProvider" class="form-control">
+                        <option value="auto">Auto (Best Available)</option>
+                        <option value="groq">Groq (Fast)</option>
+                        <option value="openai">OpenAI (GPT-3.5)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="mock">Mock LLM (Testing)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="userRole">User Role</label>
+                    <select id="userRole" class="form-control">
+                        <option value="admin">Admin (Full Access)</option>
+                        <option value="analyst">Analyst (Limited)</option>
+                        <option value="viewer">Viewer (Read Only)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="databases">Target Databases</label>
+                    <select id="databases" class="form-control" multiple>
+                        <option value="sample.db" selected>Sample Database</option>
+                        <option value="hr.db">HR Database</option>
+                        <option value="sales.db">Sales Database</option>
+                    </select>
+                </div>
+
+                <button id="updateConfig" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-sync"></i> Update Configuration
+                </button>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="config-section">
+                <h3><i class="fas fa-wifi"></i> Connection Status</h3>
+                <div id="connectionStatus">
+                    <span class="status-indicator status-error"></span>
+                    Connecting...
+                </div>
+            </div>
+
+            <!-- File Upload -->
+            <div class="config-section">
+                <h3><i class="fas fa-upload"></i> File Upload</h3>
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 1.5rem; color: #6c757d; margin-bottom: 8px;"></i>
+                    <p style="font-size: 0.8rem; color: #6c757d;">Drop files here or click to upload</p>
+                    <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.xls,.json">
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="config-section">
+                <h3><i class="fas fa-chart-bar"></i> Session Stats</h3>
+                <div id="sessionStats">
+                    <div class="stats-card">
+                        <h4>Messages Sent</h4>
+                        <div class="value" id="messageCount">0</div>
+                    </div>
+                    <div class="stats-card">
+                        <h4>Successful Queries</h4>
+                        <div class="value" id="successCount">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="config-section">
+                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                <button id="clearChat" class="btn btn-secondary" style="width: 100%; margin-bottom: 8px;">
+                    <i class="fas fa-trash"></i> Clear Chat History
+                </button>
+                <button id="exportData" class="export-btn" style="width: 100%;">
+                    <i class="fas fa-download"></i> Export Last Results
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <h2><i class="fas fa-comments"></i> Conversation</h2>
+                <div class="chat-controls">
+                    <span id="userInfo" style="font-size: 0.8rem; color: #6c757d;">admin</span>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        <p>👋 Welcome to CrewAI SQL Assistant! I'm here to help you analyze your data using natural language.</p>
+                        <p style="margin-top: 8px; font-size: 0.85rem; opacity: 0.8;">
+                            <strong>Quick examples:</strong><br>
+                            • "Show me the top 10 employees by salary"<br>
+                            • "What's the average revenue by department?"<br>
+                            • "Create a chart of product sales"
+                        </p>
+                    </div>
+                    <div class="message-info">
+                        <i class="fas fa-robot"></i>
+                        <span>CrewAI Assistant</span>
+                        <span>•</span>
+                        <span id="welcomeTime"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input">
+                <div class="input-options">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="createChart">
+                        <label for="createChart">Generate Chart</label>
+                    </div>
+                    <div class="checkbox-group" style="margin-left: 10px;">
+                        <label for="chartType" style="margin-right: 5px;">Type:</label>
+                        <select id="chartType" style="font-size: 0.8rem; padding: 2px 6px; border-radius: 4px;">
+                            <option value="bar">Bar Chart</option>
+                            <option value="pie">Pie Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Ask me anything about your data..."
+                        rows="1"
+                    ></textarea>
+                    <button id="sendButton" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let ws = null;
+        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let messageCount = 0;
+        let successCount = 0;
+        let isConnected = false;
+        let isProcessing = false;
+        let processingTimeout = null;
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 CrewAI Chat Interface starting...');
+            initializeWebSocket();
+            setupEventListeners();
+            updateWelcomeTime();
+            updateUserInfo();
+            
+            // Load system info to populate dropdowns
+            loadSystemInfo();
+        });
+
+        function loadSystemInfo() {
+            fetch('/api/system_info')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📊 System info loaded:', data);
+                    
+                    // Update databases dropdown as fallback
+                    if (data.available_databases) {
+                        updateDatabaseDropdown(data.available_databases);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load system info:', error);
+                });
+        }
+
+        function initializeWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/${userId}`;
+            
+            console.log('🔌 Connecting to WebSocket:', wsUrl);
+            updateConnectionStatus('processing', 'Connecting...');
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                console.log('✅ WebSocket connected');
+                isConnected = true;
+                updateConnectionStatus('connected', 'Connected');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch (error) {
+                    console.error('❌ Failed to parse WebSocket message:', error);
+                    showError('Invalid message received from server');
+                }
+            };
+            
+            ws.onclose = function(event) {
+                console.log('🔌 WebSocket disconnected, code:', event.code);
+                isConnected = false;
+                isProcessing = false;
+                updateConnectionStatus('error', 'Disconnected');
+                updateSendButton();
+                hideTypingIndicator();
+                
+                // Clear any pending timeout
+                if (processingTimeout) {
+                    clearTimeout(processingTimeout);
+                    processingTimeout = null;
+                }
+                
+                // Try to reconnect after 3 seconds
+                setTimeout(() => {
+                    if (!isConnected) {
+                        console.log('🔄 Attempting to reconnect...');
+                        initializeWebSocket();
+                    }
+                }, 3000);
+            };
+            
+            ws.onerror = function(error) {
+                console.error('❌ WebSocket error:', error);
+                updateConnectionStatus('error', 'Connection Error');
+                isConnected = false;
+                isProcessing = false;
+                updateSendButton();
+                hideTypingIndicator();
+            };
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('📨 Received WebSocket message:', data.type, data);
+            
+            switch(data.type) {
+                case 'system_status':
+                    if (data.status === 'connected') {
+                        updateConnectionStatus('connected', 'Connected');
+                        
+                        // Update available databases dropdown
+                        if (data.available_databases) {
+                            updateDatabaseDropdown(data.available_databases);
+                        }
+                        
+                        // Update current configuration
+                        if (data.current_config) {
+                            updateConfigurationUI(data.current_config);
+                        }
+                    }
+                    break;
+                    
+                case 'chat_response':
+                    handleChatResponse(data);
+                    break;
+                    
+                case 'feedback_response':
+                    handleFeedbackResponse(data);
+                    break;
+                    
+                case 'typing':
+                    showTypingIndicator(data.status);
+                    break;
+                    
+                case 'error':
+                    console.error('❌ WebSocket error:', data.message);
+                    
+                    // Clear processing timeout
+                    if (processingTimeout) {
+                        clearTimeout(processingTimeout);
+                        processingTimeout = null;
+                    }
+                    
+                    showError(data.message);
+                    hideTypingIndicator();
+                    isProcessing = false;
+                    updateSendButton();
+                    break;
+                    
+                case 'config_updated':
+                    if (data.status === 'success') {
+                        showAlert(data.message || 'Configuration updated successfully!', 'success');
+                        // Update UI with the new configuration
+                        if (data.config) {
+                            updateConfigurationUI(data.config);
+                        }
+                    } else {
+                        showAlert(data.message || 'Configuration update failed!', 'error');
+                    }
+                    break;
+                    
+                case 'export_ready':
+                    handleExportReady(data);
+                    break;
+                    
+                default:
+                    console.warn('🤷 Unknown message type:', data.type);
+            }
+        }
+
+        function setupEventListeners() {
+            // Send message
+            document.getElementById('sendButton').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+                // Auto-resize textarea
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            // Configuration updates
+            document.getElementById('updateConfig').addEventListener('click', updateConfiguration);
+            
+            // File upload
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleFileDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Clear chat
+            document.getElementById('clearChat').addEventListener('click', clearChatHistory);
+            
+            // Export data
+            document.getElementById('exportData').addEventListener('click', exportData);
+        }
+
+        function sendMessage() {
+            if (!isConnected || isProcessing) return;
+            
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            const createChart = document.getElementById('createChart').checked;
+            const chartType = document.getElementById('chartType').value;
+            
+            console.log('📤 Sending message:', message);
+            
+            // Add user message to chat
+            addMessageToChat(message, 'user');
+            
+            // Show typing indicator
+            showTypingIndicator('processing');
+            
+            // Send message via WebSocket
+            ws.send(JSON.stringify({
+                type: 'chat_message',
+                message: message,
+                create_chart: createChart,
+                chart_type: chartType,
+                data_source: 'auto'
+            }));
+            
+            // Clear input and update state
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            messageCount++;
+            updateStats();
+            isProcessing = true;
+            updateSendButton();
+            
+            // Set timeout to prevent indefinite waiting
+            if (processingTimeout) {
+                clearTimeout(processingTimeout);
+            }
+            
+            processingTimeout = setTimeout(() => {
+                console.warn('⏰ Processing timeout reached');
+                showError('Request timed out. Please try again.');
+                hideTypingIndicator();
+                isProcessing = false;
+                updateSendButton();
+            }, 60000); // 60 second timeout
+        }
+
+        function addMessageToChat(message, sender, data = null) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            
+            if (sender === 'user') {
+                bubble.innerHTML = `<p>${escapeHtml(message)}</p>`;
+            } else {
+                bubble.appendChild(createAssistantMessage(message, data));
+            }
+            
+            messageDiv.appendChild(bubble);
+            
+            // Add message info
+            const messageInfo = document.createElement('div');
+            messageInfo.className = 'message-info';
+            messageInfo.innerHTML = `
+                <i class="fas fa-${sender === 'user' ? 'user' : 'robot'}"></i>
+                <span>${sender === 'user' ? getUserRole() : 'CrewAI Assistant'}</span>
+                <span>•</span>
+                <span>${new Date().toLocaleTimeString()}</span>
+            `;
+            
+            messageDiv.appendChild(messageInfo);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function createAssistantMessage(message, data) {
+            const container = document.createElement('div');
+            
+            // Main response
+            const responseP = document.createElement('p');
+            responseP.textContent = message;
+            container.appendChild(responseP);
+            
+            if (data) {
+                // SQL Query display
+                if (data.sql_query) {
+                    const sqlDiv = document.createElement('div');
+                    sqlDiv.className = 'sql-display';
+                    sqlDiv.textContent = data.sql_query;
+                    container.appendChild(sqlDiv);
+                }
+                
+                // Data table
+                if (data.data && data.data.length > 0) {
+                    const tableDiv = createDataTable(data.data, data.columns);
+                    container.appendChild(tableDiv);
+                    
+                    // Stats
+                    const statsP = document.createElement('p');
+                    statsP.style.fontSize = '0.8rem';
+                    statsP.style.color = '#6c757d';
+                    statsP.style.marginTop = '10px';
+                    statsP.innerHTML = `📊 <strong>${data.row_count}</strong> rows returned | <strong>${data.columns?.length || 0}</strong> columns | Provider: <strong>${data.llm_provider}</strong>`;
+                    container.appendChild(statsP);
+                }
+                
+                // Chart display
+                if (data.chart_path) {
+                    const chartDiv = document.createElement('div');
+                    chartDiv.className = 'chart-display';
+                    chartDiv.innerHTML = `
+                        <h4 style="margin-bottom: 10px; color: #495057;">📈 Generated Visualization</h4>
+                        <img src="/chart/${data.chart_path}" alt="Generated Chart" style="max-width: 100%;">
+                    `;
+                    container.appendChild(chartDiv);
+                }
+                
+                // Message actions
+                if (data.success) {
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'message-actions';
+                    actionsDiv.innerHTML = `
+                        <button class="btn btn-small btn-secondary" onclick="provideFeedback('${data.message_id}')">
+                            <i class="fas fa-comment"></i> Provide Feedback
+                        </button>
+                    `;
+                    container.appendChild(actionsDiv);
+                }
+            }
+            
+            return container;
+        }
+
+        function createDataTable(data, columns) {
+            if (!data || data.length === 0) {
+                const noDataDiv = document.createElement('div');
+                noDataDiv.style.padding = '20px';
+                noDataDiv.style.textAlign = 'center';
+                noDataDiv.style.color = '#6c757d';
+                noDataDiv.textContent = 'No data to display';
+                return noDataDiv;
+            }
+            
+            console.log('📊 Creating data table with:', data.length, 'rows and columns:', columns);
+            
+            const tableDiv = document.createElement('div');
+            tableDiv.className = 'data-table';
+            
+            const table = document.createElement('table');
+            
+            // Headers
+            if (columns && columns.length > 0) {
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                columns.forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+            } else {
+                // Infer columns from first row
+                if (data.length > 0 && typeof data[0] === 'object') {
+                    columns = Object.keys(data[0]);
+                    const thead = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    columns.forEach(col => {
+                        const th = document.createElement('th');
+                        th.textContent = col;
+                        headerRow.appendChild(th);
+                    });
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+                }
+            }
+            
+            // Body
+            const tbody = document.createElement('tbody');
+            data.slice(0, 50).forEach((row, index) => { // Limit to 50 rows for display
+                const tr = document.createElement('tr');
+                if (columns) {
+                    columns.forEach(col => {
+                        const td = document.createElement('td');
+                        const value = row[col];
+                        td.textContent = value !== null && value !== undefined ? value : '';
+                        tr.appendChild(td);
+                    });
+                } else {
+                    Object.values(row).forEach(value => {
+                        const td = document.createElement('td');
+                        td.textContent = value !== null && value !== undefined ? value : '';
+                        tr.appendChild(td);
+                    });
+                }
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            tableDiv.appendChild(table);
+            
+            if (data.length > 50) {
+                const moreDiv = document.createElement('div');
+                moreDiv.style.padding = '10px';
+                moreDiv.style.textAlign = 'center';
+                moreDiv.style.fontSize = '0.8rem';
+                moreDiv.style.color = '#6c757d';
+                moreDiv.textContent = `... and ${data.length - 50} more rows`;
+                tableDiv.appendChild(moreDiv);
+            }
+            
+            return tableDiv;
+        }
+
+        function handleChatResponse(data) {
+            console.log('📨 Received chat response:', {
+                success: data.success,
+                row_count: data.row_count,
+                columns: data.columns?.length,
+                data_length: data.data?.length,
+                sql_query: data.sql_query ? 'Yes' : 'No',
+                chart_path: data.chart_path ? 'Yes' : 'No'
+            });
+            
+            // Clear processing timeout
+            if (processingTimeout) {
+                clearTimeout(processingTimeout);
+                processingTimeout = null;
+            }
+            
+            // Hide typing indicator immediately
+            hideTypingIndicator();
+            
+            if (data.success) {
+                console.log(`✅ Query successful: ${data.row_count} rows returned`);
+                
+                // Validate data structure
+                if (data.data && Array.isArray(data.data)) {
+                    console.log('📊 Data sample:', data.data.slice(0, 2));
+                } else {
+                    console.warn('⚠️ Data is not an array:', typeof data.data);
+                }
+                
+                addMessageToChat(data.response, 'assistant', data);
+                successCount++;
+            } else {
+                console.log(`❌ Query failed: ${data.error || data.response}`);
+                addMessageToChat(data.response, 'assistant', { error: data.error });
+            }
+            
+            updateStats();
+            
+            // Reset processing state
+            isProcessing = false;
+            updateSendButton();
+            
+            // Log detailed info
+            if (data.sql_query) {
+                console.log('🔍 SQL Query:', data.sql_query);
+            }
+        }
+
+        function handleFeedbackResponse(data) {
+            // Clear processing timeout
+            if (processingTimeout) {
+                clearTimeout(processingTimeout);
+                processingTimeout = null;
+            }
+            
+            hideTypingIndicator();
+            isProcessing = false;
+            updateSendButton();
+            
+            if (data.success) {
+                addMessageToChat(`🔄 Feedback applied: ${data.response}`, 'assistant', data);
+                successCount++;
+            } else {
+                addMessageToChat(`❌ Feedback failed: ${data.response}`, 'assistant', { error: data.error });
+            }
+            updateStats();
+        }
+
+        function showTypingIndicator(status) {
+            hideTypingIndicator(); // Remove existing indicator
+            
+            const chatMessages = document.getElementById('chatMessages');
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.id = 'typingIndicator';
+            
+            const statusText = status === 'processing_feedback' ? 'Applying feedback' : 'Analyzing query';
+            
+            indicator.innerHTML = `
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <span style="font-size: 0.8rem; color: #6c757d;">${statusText}...</span>
+            `;
+            
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function provideFeedback(messageId) {
+            const feedback = prompt('Please provide specific feedback on how to improve this query:');
+            if (feedback && feedback.trim()) {
+                showTypingIndicator('processing_feedback');
+                isProcessing = true;
+                updateSendButton();
+                
+                ws.send(JSON.stringify({
+                    type: 'feedback',
+                    message_id: messageId,
+                    feedback: feedback.trim()
+                }));
+            }
+        }
+
+        function updateConfiguration() {
+            const llmProvider = document.getElementById('llmProvider').value;
+            const userRole = document.getElementById('userRole').value;
+            const databases = Array.from(document.getElementById('databases').selectedOptions).map(opt => opt.value);
+            
+            if (databases.length === 0) {
+                showAlert('Please select at least one database.', 'error');
+                return;
+            }
+            
+            console.log('Updating configuration:', {
+                llm_provider: llmProvider,
+                user_role: userRole,
+                selected_databases: databases
+            });
+            
+            // Show loading state
+            const updateBtn = document.getElementById('updateConfig');
+            const originalText = updateBtn.innerHTML;
+            updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            updateBtn.disabled = true;
+            
+            ws.send(JSON.stringify({
+                type: 'config_update',
+                config: {
+                    llm_provider: llmProvider,
+                    user_role: userRole,
+                    selected_databases: databases
+                }
+            }));
+            
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                updateBtn.innerHTML = originalText;
+                updateBtn.disabled = false;
+            }, 3000);
+            
+            updateUserInfo();
+        }
+
+        function updateDatabaseDropdown(availableDatabases) {
+            const databaseSelect = document.getElementById('databases');
+            
+            // Clear existing options
+            databaseSelect.innerHTML = '';
+            
+            // Add available databases
+            availableDatabases.forEach(db => {
+                const option = document.createElement('option');
+                option.value = db;
+                option.textContent = db;
+                option.selected = true; // Select all by default
+                databaseSelect.appendChild(option);
+            });
+            
+            console.log(`✅ Updated database dropdown with ${availableDatabases.length} databases:`, availableDatabases);
+        }
+
+        function updateConfigurationUI(config) {
+            // Update LLM provider
+            const llmProvider = document.getElementById('llmProvider');
+            if (llmProvider && config.llm_provider) {
+                llmProvider.value = config.llm_provider;
+            }
+            
+            // Update user role
+            const userRole = document.getElementById('userRole');
+            if (userRole && config.user_role) {
+                userRole.value = config.user_role;
+            }
+            
+            // Update selected databases
+            const databases = document.getElementById('databases');
+            if (databases && config.selected_databases) {
+                Array.from(databases.options).forEach(option => {
+                    option.selected = config.selected_databases.includes(option.value);
+                });
+            }
+            
+            updateUserInfo();
+        }
+
+        function updateConnectionStatus(status, text) {
+            const statusDiv = document.getElementById('connectionStatus');
+            const indicator = statusDiv.querySelector('.status-indicator');
+            
+            indicator.className = `status-indicator status-${status}`;
+            statusDiv.innerHTML = `<span class="status-indicator status-${status}"></span>${text}`;
+        }
+
+        function updateStats() {
+            document.getElementById('messageCount').textContent = messageCount;
+            document.getElementById('successCount').textContent = successCount;
+        }
+
+        function updateSendButton() {
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = !isConnected || isProcessing;
+            
+            if (isProcessing) {
+                sendButton.innerHTML = '<div class="spinner"></div>';
+            } else {
+                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+        }
+
+        function updateUserInfo() {
+            const userRole = document.getElementById('userRole').value;
+            document.getElementById('userInfo').textContent = `${userRole} - ${userId}`;
+        }
+
+        function updateWelcomeTime() {
+            document.getElementById('welcomeTime').textContent = new Date().toLocaleTimeString();
+        }
+
+        function getUserRole() {
+            return document.getElementById('userRole').value.charAt(0).toUpperCase() + document.getElementById('userRole').value.slice(1);
+        }
+
+        function clearChatHistory() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                const chatMessages = document.getElementById('chatMessages');
+                // Keep only the welcome message
+                const welcomeMessage = chatMessages.firstElementChild;
+                chatMessages.innerHTML = '';
+                chatMessages.appendChild(welcomeMessage);
+                
+                // Reset stats
+                messageCount = 0;
+                successCount = 0;
+                updateStats();
+                
+                showAlert('Chat history cleared.', 'info');
+            }
+        }
+
+        function exportData() {
+            ws.send(JSON.stringify({
+                type: 'export_request'
+            }));
+        }
+
+        function handleExportReady(data) {
+            showAlert(`Export ready: ${data.message}`, 'success');
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = data.download_url;
+            link.download = data.filename;
+            link.click();
+        }
+
+        // File upload handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        }
+
+        async function uploadFile(file) {
+            const fileName = prompt('Enter a name for this data source:', file.name.split('.')[0]);
+            if (!fileName) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('user_id', userId);
+            formData.append('name', fileName);
+            
+            try {
+                showAlert('Uploading file...', 'info');
+                
+                const response = await fetch('/upload_file', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`File "${fileName}" uploaded successfully!`, 'success');
+                } else {
+                    showAlert(`Upload failed: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Upload error: ${error.message}`, 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const chatMessages = document.getElementById('chatMessages');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            chatMessages.appendChild(alert);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Remove alert after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+
+        function showError(message) {
+            showAlert(message, 'error');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

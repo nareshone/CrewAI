@@ -1,0 +1,9 @@
+product_id,product_name,category,price,stock,supplier
+1,Laptop,Electronics,999.99,50,TechCorp
+2,Mouse,Accessories,25.99,200,AccessoryInc
+3,Keyboard,Accessories,79.99,150,AccessoryInc
+4,Monitor,Electronics,299.99,75,TechCorp
+5,Webcam,Accessories,89.99,120,AccessoryInc
+6,Speakers,Accessories,149.99,80,AudioCorp
+7,Headphones,Accessories,199.99,60,AudioCorp
+8,Tablet,Electronics,599.99,30,TechCorp

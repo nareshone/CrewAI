@@ -14,339 +14,56 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional UI design
+# Custom CSS for better UI
 st.markdown("""
 <style>
-    /* Import Google Fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    /* Global Styles */
-    .main {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Main Header Card */
     .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 15px;
+        background: linear-gradient(90deg, #1e3c72, #2a5298);
+        padding: 1rem;
+        border-radius: 10px;
         color: white;
         text-align: center;
         margin-bottom: 2rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255,255,255,0.1);
     }
-    
-    .main-header h1 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .main-header p {
-        font-size: 1.1rem;
-        font-weight: 300;
-        opacity: 0.9;
-        margin: 0;
-    }
-    
-    /* Sidebar Styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-        border-right: 1px solid #dee2e6;
-    }
-    
-    /* Configuration Cards */
-    .config-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        border: 1px solid #e1e5e9;
-    }
-    
-    .config-card h3 {
-        color: #2c3e50;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        font-size: 1.1rem;
-    }
-    
-    /* Role Badges */
     .role-badge {
         display: inline-block;
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin: 0.5rem 0;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .admin-badge { 
-        background: linear-gradient(135deg, #e74c3c, #c0392b); 
-        color: white; 
-        box-shadow: 0 2px 10px rgba(231, 76, 60, 0.3);
-    }
-    .analyst-badge { 
-        background: linear-gradient(135deg, #f39c12, #e67e22); 
-        color: white; 
-        box-shadow: 0 2px 10px rgba(243, 156, 18, 0.3);
-    }
-    .viewer-badge { 
-        background: linear-gradient(135deg, #27ae60, #229954); 
-        color: white; 
-        box-shadow: 0 2px 10px rgba(39, 174, 96, 0.3);
-    }
-    
-    /* Status Indicators */
-    .llm-status {
-        background: linear-gradient(135deg, #d4edda, #c3e6cb);
-        border: 1px solid #c3e6cb;
-        padding: 0.75rem;
-        border-radius: 8px;
-        margin: 0.5rem 0;
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-    
-    .database-info {
-        background: linear-gradient(135deg, #cce5ff, #b3d9ff);
-        border: 1px solid #80bdff;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        font-size: 0.95rem;
-        box-shadow: 0 2px 10px rgba(0,123,255,0.1);
-    }
-    
-    /* Content Cards */
-    .content-card {
-        background: white;
-        padding: 2rem;
+        padding: 0.25rem 0.75rem;
         border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        border: 1px solid #e1e5e9;
+        font-size: 0.875rem;
+        font-weight: bold;
+        margin: 0.25rem;
     }
-    
-    .content-card h2 {
-        color: #2c3e50;
-        font-weight: 600;
-        margin-bottom: 1.5rem;
-        font-size: 1.4rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    /* Query Interface Card */
-    .query-interface {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        padding: 2rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        border: 1px solid #e1e5e9;
-    }
-    
-    /* Button Styling */
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        font-size: 0.95rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    }
-    
-    /* Primary Button Override */
-    div[data-testid="stButton"] button[kind="primary"] {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-    }
-    
-    div[data-testid="stButton"] button[kind="primary"]:hover {
-        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-    }
-    
-    /* Example Buttons */
-    .example-btn {
-        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 0.6rem 1rem;
-        margin: 0.3rem 0;
-        font-size: 0.85rem;
-        font-weight: 500;
-        width: 100%;
-        text-align: left;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 10px rgba(108, 117, 125, 0.2);
-    }
-    
-    .example-btn:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
-    }
-    
-    /* Metrics Styling */
-    div[data-testid="metric-container"] {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border: 1px solid #e1e5e9;
-        padding: 1rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    /* Results Container */
-    .results-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        margin: 1.5rem 0;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        border: 1px solid #e1e5e9;
-    }
-    
-    /* SQL Code Block */
-    .stCodeBlock {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: 1px solid #dee2e6;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    /* Feedback Box */
+    .admin-badge { background-color: #dc3545; color: white; }
+    .analyst-badge { background-color: #ffc107; color: black; }
+    .viewer-badge { background-color: #28a745; color: white; }
     .feedback-box {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        border-left: 4px solid #2196f3;
-        padding: 1.5rem;
-        margin: 1.5rem 0;
-        border-radius: 10px;
-        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.1);
-    }
-    
-    .feedback-box h4 {
-        color: #1565c0;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-    }
-    
-    /* Iteration Badge */
-    .iteration-badge {
-        background: linear-gradient(135deg, #17a2b8, #138496);
-        color: white;
-        padding: 0.3rem 0.8rem;
-        border-radius: 15px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
-    }
-    
-    /* Statistics Cards */
-    .stat-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f1f3f4 100%);
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
         padding: 1rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.08);
-        border: 1px solid #e8eaed;
-    }
-    
-    /* Expander Styling */
-    .streamlit-expanderHeader {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-    }
-    
-    /* Text Area and Inputs */
-    .stTextArea textarea {
-        border-radius: 10px;
-        border: 2px solid #e1e5e9;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    .stTextArea textarea:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    /* SelectBox Styling */
-    .stSelectbox > div > div {
-        border-radius: 10px;
-        border: 2px solid #e1e5e9;
-    }
-    
-    /* Multiselect Styling */
-    .stMultiSelect > div > div {
-        border-radius: 10px;
-        border: 2px solid #e1e5e9;
-    }
-    
-    /* Alert Styling */
-    .stAlert {
-        border-radius: 10px;
-        border: none;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    /* DataFrames */
-    .stDataFrame {
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    /* Footer */
-    .footer {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 15px;
-        margin-top: 2rem;
-        text-align: center;
-        box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
-    }
-    
-    /* Sidebar Headers */
-    .sidebar-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 1rem;
-        border-radius: 10px;
         margin: 1rem 0;
-        text-align: center;
-        font-weight: 600;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        border-radius: 5px;
     }
-    
-    /* Custom spacing */
-    .section-divider {
-        height: 2px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 2px;
-        margin: 2rem 0;
-        opacity: 0.3;
+    .iteration-badge {
+        background-color: #17a2b8;
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.75rem;
+    }
+    .llm-status {
+        background-color: #e8f5e8;
+        border: 1px solid #4caf50;
+        padding: 0.5rem;
+        border-radius: 5px;
+        margin: 0.5rem 0;
+    }
+    .database-info {
+        background-color: #f0f8ff;
+        border: 1px solid #007bff;
+        padding: 0.5rem;
+        border-radius: 5px;
+        margin: 0.5rem 0;
+        font-size: 0.9em;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -462,121 +179,80 @@ st.markdown("""
 
 # Sidebar for configuration
 with st.sidebar:
-    # System Configuration Header
-    st.markdown("""
-    <div class="sidebar-header">
-        ⚙️ System Configuration
-    </div>
-    """, unsafe_allow_html=True)
+    st.header("⚙️ System Configuration")
     
-    # LLM Provider Selection Card
-    st.markdown("""
-    <div class="config-card">
-        <h3>🧠 LLM Provider</h3>
-    </div>
-    """, unsafe_allow_html=True)
-    
+    # LLM Provider Selection
+    st.subheader("🧠 LLM Provider")
     available_llms = get_available_llm_providers()
     
     selected_llm_display = st.selectbox(
-        "Choose AI Model Provider",
+        "Choose LLM Provider",
         options=list(available_llms.keys()),
         index=0,
-        help="Select the AI model provider for intelligent query generation",
-        label_visibility="collapsed"
+        help="Select the AI model provider for query generation"
     )
     
     selected_llm = available_llms[selected_llm_display]
     
-    # Show LLM status with better styling
+    # Show LLM status
     if "✅" in selected_llm_display:
-        st.markdown('<div class="llm-status">✅ Provider Ready & Available</div>', unsafe_allow_html=True)
+        st.markdown('<div class="llm-status">✅ Provider Available</div>', unsafe_allow_html=True)
     elif "⚠️" in selected_llm_display:
-        st.markdown('<div class="llm-status" style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border-color: #ffc107;">⚠️ Provider Partially Available</div>', unsafe_allow_html=True)
+        st.markdown('<div class="llm-status">⚠️ Provider Partially Available</div>', unsafe_allow_html=True)
     elif "❌" in selected_llm_display:
-        st.markdown('<div class="llm-status" style="background: linear-gradient(135deg, #f8d7da, #f5c6cb); border-color: #dc3545;">❌ Provider Not Available</div>', unsafe_allow_html=True)
+        st.markdown('<div class="llm-status">❌ Provider Not Available</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="llm-status" style="background: linear-gradient(135deg, #d1ecf1, #bee5eb); border-color: #17a2b8;">🔧 Auto-Detection Mode</div>', unsafe_allow_html=True)
+        st.markdown('<div class="llm-status">🔧 Auto-Detection</div>', unsafe_allow_html=True)
     
-    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.divider()
     
-    # Database Selection Card
-    st.markdown("""
-    <div class="config-card">
-        <h3>🗄️ Database Selection</h3>
-    </div>
-    """, unsafe_allow_html=True)
-    
+    # Database Selection
+    st.subheader("🗄️ Database Selection")
     available_dbs = get_available_databases()
+    
+    # Add "All" option
     db_options = ["All"] + available_dbs
     
     selected_dbs = st.multiselect(
-        "Select Target Databases",
+        "Select Databases",
         options=db_options,
         default=["All"],
-        help="Choose specific databases or 'All' for cross-database analysis",
-        label_visibility="collapsed"
+        help="Choose which databases to query. 'All' enables cross-database queries."
     )
     
     # If "All" is selected, use all databases
     if "All" in selected_dbs:
         selected_databases = available_dbs
-        st.markdown("""
-        <div class="database-info">
-            📊 <strong>All Databases Selected</strong><br>
-            Cross-database queries enabled
-        </div>
-        """, unsafe_allow_html=True)
+        st.info("📊 All databases selected - Cross-database queries enabled")
     else:
         selected_databases = [db for db in selected_dbs if db != "All"]
     
-    # Show database information in cards
+    # Show database information
     if selected_databases:
-        st.markdown("**📋 Database Overview:**")
+        st.markdown("**Selected Database(s):**")
         total_tables = 0
         for db in selected_databases:
             tables = get_database_tables(db)
             total_tables += len(tables)
-            
-            st.markdown(f"""
-            <div class="stat-card">
-                <strong>{db}</strong><br>
-                📊 {len(tables)} tables available
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"• **{db}**: {len(tables)} tables")
             if len(tables) > 0 and len(selected_databases) == 1:  # Show details for single DB
-                with st.expander(f"📋 Tables in {db}", expanded=False):
-                    for table in tables:
-                        st.markdown(f"• {table}")
+                for table in tables[:5]:  # Show first 5 tables
+                    st.markdown(f"  - {table}")
+                if len(tables) > 5:
+                    st.markdown(f"  - ... and {len(tables) - 5} more")
         
-        st.markdown(f"""
-        <div class="database-info">
-            <strong>Total Tables Available: {total_tables}</strong>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"**Total Tables Available: {total_tables}**")
     
-    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+    st.divider()
     
-    # User Configuration Card
-    st.markdown("""
-    <div class="sidebar-header">
-        👤 User Profile
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="config-card">
-        <h3>🔐 Role & Permissions</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    # User Configuration
+    st.header("👤 User Configuration")
     
     username = st.selectbox(
-        "Select your user role", 
+        "Select your role", 
         options=["admin", "analyst", "viewer"], 
         index=0,
-        help="Each role has different data access levels and permissions",
-        label_visibility="collapsed"
+        help="Different roles have different data access levels"
     )
     
     # Initialize or update app when configuration changes
@@ -607,7 +283,7 @@ if st.session_state.app_initialized and 'app' in st.session_state:
     accessible_tables = app.system.get_user_accessible_tables(username, selected_databases)
     
     with st.sidebar:
-        # Role display with enhanced styling
+        # Role display with styling
         if user_role:
             role_class = f"{user_role.value}-badge"
             st.markdown(f"""
@@ -616,80 +292,56 @@ if st.session_state.app_initialized and 'app' in st.session_state:
             </div>
             """, unsafe_allow_html=True)
             
-            # Show accessible tables in a clean format
-            st.markdown("**🔓 Your Access Level:**")
+            # Show accessible tables for current user
+            st.markdown("**Your Accessible Tables:**")
             if accessible_tables:
-                # Limit display to prevent overcrowding
-                display_tables = accessible_tables[:8]
-                for table in display_tables:
+                for table in accessible_tables[:10]:  # Limit display
                     st.markdown(f"• {table}")
-                if len(accessible_tables) > 8:
-                    st.markdown(f"• *... and {len(accessible_tables) - 8} more tables*")
+                if len(accessible_tables) > 10:
+                    st.markdown(f"• ... and {len(accessible_tables) - 10} more")
             else:
-                st.markdown("• *No accessible tables*")
+                st.markdown("• No accessible tables")
         
-        st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+        st.divider()
         
-        # System Statistics Card
-        st.markdown("""
-        <div class="sidebar-header">
-            📊 System Statistics
-        </div>
-        """, unsafe_allow_html=True)
-        
+        # System stats
+        st.header("📊 System Statistics")
         stats = app.system.get_stats(username)
         
-        # Create cleaner metrics display
-        st.markdown(f"""
-        <div class="stat-card">
-            <strong>📈 Query Performance</strong><br>
-            Total: {stats['total_queries']} | Success: {(stats['successful_queries']/max(stats['total_queries'],1)*100):.0f}%
-        </div>
-        """, unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Queries", stats['total_queries'])
+            st.metric("Success Rate", f"{(stats['successful_queries']/max(stats['total_queries'],1)*100):.1f}%")
         
-        st.markdown(f"""
-        <div class="stat-card">
-            <strong>🔄 System Activity</strong><br>
-            Feedback Sessions: {stats['feedback_sessions']}<br>
-            Registered Files: {stats['registered_files']}
-        </div>
-        """, unsafe_allow_html=True)
+        with col2:
+            st.metric("Feedback Sessions", stats['feedback_sessions'])
+            st.metric("Registered Files", stats['registered_files'])
         
         if 'user_stats' in stats:
-            st.markdown(f"""
-            <div class="stat-card">
-                <strong>👤 Your Activity</strong><br>
-                Queries: {stats['user_stats']['total']}<br>
-                Success Rate: {stats['user_stats']['success_rate']}<br>
-                Feedback Given: {stats['user_stats']['feedback_given']}
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("**Your Statistics:**")
+            st.markdown(f"• Queries: {stats['user_stats']['total']}")
+            st.markdown(f"• Success Rate: {stats['user_stats']['success_rate']}")
+            st.markdown(f"• Feedback Given: {stats['user_stats']['feedback_given']}")
         
-        st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+        st.divider()
         
-        # File Upload Section (role-based)
+        # File upload section (role-based)
         if app.system.role_manager.check_permission(username, "register_files"):
-            st.markdown("""
-            <div class="config-card">
-                <h3>📁 File Upload</h3>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.header("📁 File Upload")
             uploaded_file = st.file_uploader(
-                "Upload Data Files", 
+                "Upload CSV, Excel, or JSON file", 
                 type=['csv', 'xlsx', 'xls', 'json'],
-                help="Upload files to query alongside database tables",
-                label_visibility="collapsed"
+                help="Upload data files to query alongside database tables"
             )
             
             if uploaded_file:
                 file_name_input = st.text_input(
-                    "Registration name", 
+                    "File registration name", 
                     value=uploaded_file.name.split('.')[0],
                     help="Name to use when querying this file"
                 )
                 
-                if st.button("📥 Register File", type="primary", use_container_width=True):
+                if st.button("📥 Register File", type="primary"):
                     # Save uploaded file
                     upload_dir = "uploads"
                     os.makedirs(upload_dir, exist_ok=True)
@@ -707,49 +359,38 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                     else:
                         st.error(f"❌ Failed to register: {result.get('message', 'Unknown error')}")
         else:
-            st.markdown("""
-            <div class="llm-status" style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border-color: #ffc107;">
-                🔒 File upload requires analyst or admin role
-            </div>
-            """, unsafe_allow_html=True)
+            st.info("🔒 File upload requires analyst or admin role")
 
-    # Main content area with improved layout
-    col1, col2 = st.columns([2.5, 1.5], gap="large")
+    # Main content area
+    col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Query Interface Card
-        st.markdown("""
-        <div class="query-interface">
-            <h2>💬 Query Interface</h2>
-        </div>
-        """, unsafe_allow_html=True)
+        st.header("💬 Query Interface")
         
-        # Current configuration display
+        # Show current configuration
         st.markdown(f"""
         <div class="database-info">
-            🧠 <strong>AI Model:</strong> {selected_llm_display}<br>
-            🗄️ <strong>Target Databases:</strong> {len(selected_databases)} database(s)<br>
-            📊 <strong>Your Access:</strong> {len(accessible_tables)} table(s) available
+        🧠 <strong>LLM:</strong> {selected_llm_display}<br>
+        🗄️ <strong>Databases:</strong> {len(selected_databases)} database(s)<br>
+        📊 <strong>Accessible Tables:</strong> {len(accessible_tables)} table(s)
         </div>
         """, unsafe_allow_html=True)
         
-        # Query input with better styling
+        # Query input
         user_query = st.text_area(
-            "🔍 **Enter your data query in natural language**",
+            "🔍 Enter your data query in natural language",
             value="Show average salary by department" if user_role != UserRole.VIEWER else "Show departments and their locations",
-            height=120,
-            help="Ask questions about your data in plain English. The AI will generate appropriate SQL queries based on your role and selected databases.",
-            placeholder="e.g., 'Show me the top 10 products by sales' or 'What are the average salaries by department?'"
+            height=100,
+            help="Ask questions about your data in plain English"
         )
         
-        # Query configuration in organized layout
-        st.markdown("**⚙️ Query Configuration**")
+        # Query configuration
         col_config1, col_config2, col_config3 = st.columns(3)
         
         with col_config1:
             if len(selected_databases) == 1:
                 data_source = selected_databases[0]
-                st.info(f"🗄️ **Target:** {data_source}")
+                st.info(f"🗄️ Using: {data_source}")
             else:
                 data_source = st.selectbox(
                     "🗄️ Primary database", 
@@ -760,27 +401,21 @@ if st.session_state.app_initialized and 'app' in st.session_state:
         
         with col_config2:
             create_chart = st.checkbox(
-                "📊 Generate visualization", 
+                "📊 Generate chart", 
                 value=True,
-                help="Create a professional chart from query results"
+                help="Create a visualization of the results"
             )
         
         with col_config3:
             chart_type = st.selectbox(
-                "📈 Chart style", 
+                "📈 Chart type", 
                 options=["bar", "pie"], 
                 index=0,
-                disabled=not create_chart,
-                help="Choose the type of visualization"
+                disabled=not create_chart
             )
 
     with col2:
-        # Query Examples Card
-        st.markdown("""
-        <div class="content-card">
-            <h2>🎯 Smart Query Examples</h2>
-        </div>
-        """, unsafe_allow_html=True)
+        st.header("🎯 Query Examples")
         
         # Database-specific and role-based example queries
         examples = []
@@ -850,7 +485,6 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                     "Show available product types"
                 ]
         
-        # Display examples with better styling
         for i, example in enumerate(examples):
             if st.button(f"💡 {example}", key=f"example_{i}", use_container_width=True):
                 st.session_state.example_query = example
@@ -861,11 +495,8 @@ if st.session_state.app_initialized and 'app' in st.session_state:
             user_query = st.session_state.example_query
             del st.session_state.example_query
 
-    # Action buttons with improved spacing and styling
-    st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-    
-    st.markdown("**🚀 Execute Analysis**")
-    col_btn1, col_btn2, col_btn3 = st.columns(3, gap="medium")
+    # Main action buttons
+    col_btn1, col_btn2, col_btn3 = st.columns(3)
 
     with col_btn1:
         run_analysis = st.button("🚀 Run Analysis", type="primary", use_container_width=True)
@@ -941,19 +572,14 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                 'databases': selected_databases
             })
 
-    # Display results with enhanced styling
+    # Display results
     if st.session_state.current_result:
         result = st.session_state.current_result
-        
-        # Results container
-        st.markdown("""
-        <div class="results-container">
-        """, unsafe_allow_html=True)
         
         # Results header with iteration info
         col_header1, col_header2 = st.columns([3, 1])
         with col_header1:
-            st.markdown("## 📋 Analysis Results")
+            st.header("📋 Analysis Results")
         with col_header2:
             if st.session_state.iteration_count > 0:
                 st.markdown(f"""
@@ -961,28 +587,28 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                 """, unsafe_allow_html=True)
         
         if result.get("success"):
-            # Success metrics in cards
+            # Success metrics
             col_metric1, col_metric2, col_metric3, col_metric4 = st.columns(4)
             
             with col_metric1:
-                st.metric("Status", "✅ Success", delta="Completed")
+                st.metric("Status", "✅ Success")
             with col_metric2:
                 st.metric("User Role", result.get("user_role", "Unknown"))
             with col_metric3:
                 st.metric("Agents Used", result.get("agents_used", 0))
             with col_metric4:
-                st.metric("AI Provider", selected_llm_display.split()[0])
+                st.metric("LLM Provider", selected_llm_display.split()[0])
             
-            # SQL Query display with enhanced styling
+            # SQL Query display
             if result.get("execution_data"):
                 exec_data = result["execution_data"]
                 
-                st.markdown("### 📝 Generated SQL Query")
+                st.subheader("📝 Generated SQL Query")
                 sql_query = exec_data.get("sql_query", "No SQL returned")
                 st.code(sql_query, language="sql")
                 
                 # Results data
-                st.markdown("### 📊 Query Results")
+                st.subheader("📊 Query Results")
                 
                 if "data" in exec_data and exec_data["data"]:
                     df = pd.DataFrame(exec_data["data"])
@@ -1005,7 +631,7 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                                 st.info(f"📋 {col}: {value}")
                         
                         # Still show the dataframe but with a note
-                        st.caption("*Raw result data:*")
+                        st.caption("Raw result:")
                         st.dataframe(df, use_container_width=True)
                         
                     else:
@@ -1013,12 +639,12 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                         # Show row count and basic info
                         col_info1, col_info2 = st.columns(2)
                         with col_info1:
-                            st.metric("Rows Returned", len(df), delta="Records")
+                            st.metric("Rows Returned", len(df))
                         with col_info2:
-                            st.metric("Columns", len(df.columns), delta="Fields")
+                            st.metric("Columns", len(df.columns))
                         
-                        # Display data table with enhanced styling
-                        st.dataframe(df, use_container_width=True, height=400)
+                        # Display data table
+                        st.dataframe(df, use_container_width=True)
                         
                         # Chart display
                         if create_chart and len(df) > 0:
@@ -1030,7 +656,7 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                                 chart_files = sorted(chart_files, key=lambda x: os.path.getmtime(x), reverse=True)
                                 latest_chart = chart_files[0]
                                 
-                                st.markdown("### 📈 Generated Visualization")
+                                st.subheader("📈 Generated Visualization")
                                 st.image(latest_chart, caption=f"📊 {chart_type.title()} Chart - Generated by CrewAI", use_container_width=True)
                             else:
                                 st.warning("📈 Chart generation was requested but no chart file was found.")
@@ -1039,27 +665,27 @@ if st.session_state.app_initialized and 'app' in st.session_state:
             else:
                 st.warning("No execution data available")
             
-            # Feedback section with enhanced styling
+            # Feedback section
             if not st.session_state.feedback_mode:
-                st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+                st.divider()
                 
                 col_feedback1, col_feedback2 = st.columns([3, 1])
                 
                 with col_feedback1:
-                    st.markdown("### 🔄 Feedback & Iteration")
-                    st.markdown("*Not satisfied with the results? Provide specific feedback to improve the query!*")
+                    st.subheader("🔄 Feedback & Iteration")
+                    st.markdown("Not satisfied with the results? Provide feedback to improve the query!")
                 
                 with col_feedback2:
                     if st.button("💬 Provide Feedback", type="secondary", use_container_width=True):
                         st.session_state.feedback_mode = True
                         st.rerun()
             
-            # Feedback input form with enhanced styling
+            # Feedback input form
             if st.session_state.feedback_mode:
                 st.markdown("""
                 <div class="feedback-box">
                     <h4>💬 Provide Specific Feedback</h4>
-                    <p>Tell the AI exactly how to improve the query. Be specific about what you want changed or added.</p>
+                    <p>Tell the AI how to improve the query. Be specific about what you want changed.</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1126,31 +752,18 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                         st.rerun()
         
         else:
-            # Error display with enhanced styling
-            st.error("❌ Query Analysis Failed")
-            
-            error_msg = result.get("error", "No error information available")
-            st.markdown(f"""
-            <div class="feedback-box" style="background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%); border-left-color: #f44336;">
-                <h4>⚠️ Error Details</h4>
-                <p>{error_msg}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Error display
+            st.error("❌ Query failed")
+            st.text(result.get("error", "No error information available"))
             
             if result.get("user_role"):
-                st.info(f"🔒 **Note:** You are logged in as a **{result['user_role']}** user with specific access restrictions.")
-        
-        st.markdown("</div>", unsafe_allow_html=True)  # Close results container
+                st.info(f"🔒 Note: You are logged in as a {result['user_role']} user with limited access to certain data.")
 
-    # Query history sidebar (user-specific) with enhanced design
+    # Query history sidebar (user-specific)
     if username in st.session_state.query_history and st.session_state.query_history[username]:
         with st.sidebar:
-            st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-            st.markdown("""
-            <div class="sidebar-header">
-                📝 Your Query History
-            </div>
-            """, unsafe_allow_html=True)
+            st.divider()
+            st.header("📝 Your Query History")
             
             user_history = st.session_state.query_history[username]
             
@@ -1161,52 +774,34 @@ if st.session_state.app_initialized and 'app' in st.session_state:
                 llm_info = entry.get('llm_provider', 'Unknown')[:10]
                 
                 with st.expander(f"{status_icon} {entry['timestamp'].strftime('%H:%M')} {iteration_text}"):
-                    st.markdown(f"**Query:** {entry['query'][:80]}...")
-                    st.markdown(f"**Status:** {'Success' if entry['success'] else 'Failed'}")
+                    st.markdown(f"**Query:** {entry['query'][:100]}...")
+                    st.markdown(f"**Success:** {entry['success']}")
                     st.markdown(f"**Iteration:** {entry['iteration']}")
-                    st.markdown(f"**AI Model:** {llm_info}")
+                    st.markdown(f"**LLM:** {llm_info}")
                     if 'databases' in entry:
-                        st.markdown(f"**Databases:** {len(entry['databases'])}")
+                        st.markdown(f"**DBs:** {len(entry['databases'])}")
 
 else:
-    # Show initialization message with better styling
-    st.markdown("""
-    <div class="content-card">
-        <h2>🔧 System Configuration Required</h2>
-        <p>Please configure the system settings in the sidebar to continue.</p>
-        <p>Select an LLM provider and database(s) to initialize the CrewAI system.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Show initialization message
+    st.warning("🔧 Please configure the system settings in the sidebar to continue.")
+    st.info("Select an LLM provider and database(s) to initialize the CrewAI system.")
 
-# Footer with enhanced professional design
-st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+# Footer with role-specific help
+st.divider()
 
 if st.session_state.app_initialized and 'app' in st.session_state:
     help_text = {
-        UserRole.ADMIN: "🔓 **Admin Access:** Full access to all data including sensitive information like salaries and personal details.",
-        UserRole.ANALYST: "📊 **Analyst Access:** Access to most data with some personal details restricted for privacy.",
-        UserRole.VIEWER: "👀 **Viewer Access:** Read-only access to non-sensitive, aggregated data only."
+        UserRole.ADMIN: "🔓 **Admin Access:** You have full access to all data including sensitive information like salaries and personal details.",
+        UserRole.ANALYST: "📊 **Analyst Access:** You have access to most data but some personal details are restricted.",
+        UserRole.VIEWER: "👀 **Viewer Access:** You have read-only access to non-sensitive data only."
     }
     
     if user_role in help_text:
-        st.markdown(f"""
-        <div class="database-info">
-            {help_text[user_role]}
-        </div>
-        """, unsafe_allow_html=True)
+        st.info(help_text[user_role])
 
-# Professional footer
 st.markdown(f"""
-<div class="footer">
-    <h3>🧠 Enhanced CrewAI SQL Assistant</h3>
-    <p><strong>Multi-Agent Intelligence with Human-in-the-Loop Feedback</strong></p>
-    <p style="font-size: 0.9rem; opacity: 0.8;">
-        Role-Based Access Control • Memory-Driven Learning • Multi-Source Data Queries • Configurable LLM
-    </p>
-    <p style="font-size: 0.8rem; opacity: 0.7;">
-        Current: {selected_llm_display if 'selected_llm_display' in locals() else 'Not configured'} | 
-        Databases: {len(selected_databases) if 'selected_databases' in locals() else 0} | 
-        Powered by CrewAI
-    </p>
-</div>
-""", unsafe_allow_html=True)
+---
+**🧠 Enhanced CrewAI SQL Assistant** | Multi-Agent Intelligence with Human-in-the-Loop Feedback  
+*Role-Based Access Control • Memory-Driven Learning • Multi-Source Data Queries • Configurable LLM*  
+*Current: {selected_llm_display if 'selected_llm_display' in locals() else 'Not configured'} | Databases: {len(selected_databases) if 'selected_databases' in locals() else 0}*
+""")

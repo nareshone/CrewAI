@@ -148,7 +148,7 @@ def test_full_system():
     print("\n🔍 Testing full CrewAI system...")
     
     try:
-        from Hackathon.main_5 import CrewAISQLSystem
+        from main import CrewAISQLSystem
         
         # Initialize system
         system = CrewAISQLSystem()

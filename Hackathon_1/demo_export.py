@@ -3,7 +3,7 @@
 Demonstration of Excel export with actual query results
 """
 
-from Hackathon.main_5 import CrewAISQLSystem
+from main import CrewAISQLSystem
 from datetime import datetime
 import pandas as pd
 

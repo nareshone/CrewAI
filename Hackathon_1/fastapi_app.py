@@ -19,7 +19,7 @@ import tempfile
 import shutil
 
 # Import the main CrewAI system
-from Hackathon.main_5 import CrewAISQLSystem, CrewAIApp
+from main import CrewAISQLSystem, CrewAIApp
 
 # Create FastAPI app
 app = FastAPI(
