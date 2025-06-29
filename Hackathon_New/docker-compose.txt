@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  crewai-assistant:
+    build: .
+    container_name: crewai-sql-assistant
+    ports:
+      - "8000:8000"
+    environment:
+      # LLM API Keys (add your keys here)
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      
+      # Application settings
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=8000
+      
+      # Database settings
+      - DATABASE_PATH=/app/databases/
+    
+    volumes:
+      # Persist uploaded files
+      - ./uploads:/app/uploads
+      
+      # Persist exported data
+      - ./exports:/app/exports
+      
+      # Persist databases
+      - ./databases:/app/databases
+      
+      # Persist charts
+      - ./charts:/app/charts
+      
+      # Environment file (optional)
+      - ./.env:/app/.env:ro
+    
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Optional: Redis for session management (if you want to scale)
+  redis:
+    image: redis:7-alpine
+    container_name: crewai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    profiles:
+      - redis
+
+  # Optional: PostgreSQL for production database (instead of SQLite)
+  postgres:
+    image: postgres:15-alpine
+    container_name: crewai-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=crewai
+      - POSTGRES_USER=crewai
+      - POSTGRES_PASSWORD=crewai_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    profiles:
+      - postgres
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  default:
+    name: crewai-network
